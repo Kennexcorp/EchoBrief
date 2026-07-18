@@ -4,7 +4,9 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
+from core.chunking import DEFAULT_MAX_CHUNK_TOKENS, chunk_segments
 from core.insights import InsightEngine
+from core.schemas import Transcript, TranscriptSegment
 
 VALID_BRIEF_JSON = json.dumps(
     {
@@ -82,6 +84,69 @@ class TestRetry:
 
         assert result.succeeded
         assert len(model.calls) == 2
+
+
+def long_transcript() -> Transcript:
+    """A synthetic transcript comfortably over 8k estimated tokens."""
+    text = "The supervisor discussed the methodology chapter in great detail today. " * 2
+    segments = [
+        TranscriptSegment(text=text, start=float(i), end=float(i) + 1.0) for i in range(300)
+    ]
+    return Transcript(segments=segments)
+
+
+class TestChunkedFlow:
+    def test_short_transcript_object_is_single_pass(self) -> None:
+        transcript = Transcript(segments=[TranscriptSegment(text="Short call.", start=0, end=1)])
+        model = FakeChatModel([VALID_BRIEF_JSON])
+
+        result = InsightEngine(model).generate_brief(transcript)
+
+        assert result.succeeded
+        assert len(model.calls) == 1
+
+    def test_long_transcript_triggers_map_reduce(self) -> None:
+        transcript = long_transcript()
+        expected_chunks = chunk_segments(transcript.segments, DEFAULT_MAX_CHUNK_TOKENS)
+        assert len(expected_chunks) > 1  # sanity: the fixture really exceeds one chunk
+
+        model = FakeChatModel([VALID_BRIEF_JSON] * (len(expected_chunks) + 1))
+        result = InsightEngine(model).generate_brief(transcript)
+
+        assert result.succeeded
+        assert len(model.calls) == len(expected_chunks) + 1  # one per chunk + synthesis
+
+    def test_failed_chunk_feeds_raw_text_into_synthesis(self) -> None:
+        # Two tiny chunks via a small budget; first chunk fails twice, second is fine.
+        transcript = Transcript(
+            segments=[
+                TranscriptSegment(text="first portion " * 10, start=0, end=1),
+                TranscriptSegment(text="second portion " * 10, start=1, end=2),
+            ]
+        )
+        model = FakeChatModel(["garbage", "still garbage", VALID_BRIEF_JSON, VALID_BRIEF_JSON])
+
+        engine = InsightEngine(model, max_chunk_tokens=10)
+        result = engine.generate_brief(transcript)
+
+        assert result.succeeded
+        assert len(model.calls) == 4  # chunk1 + its retry, chunk2, synthesis
+        synthesis_input = " ".join(str(m.content) for m in model.calls[-1])
+        assert "still garbage" in synthesis_input
+
+    def test_synthesis_failure_falls_back_to_raw_text(self) -> None:
+        transcript = Transcript(
+            segments=[
+                TranscriptSegment(text="first portion " * 10, start=0, end=1),
+                TranscriptSegment(text="second portion " * 10, start=1, end=2),
+            ]
+        )
+        model = FakeChatModel([VALID_BRIEF_JSON, VALID_BRIEF_JSON, "bad", "bad again"])
+
+        result = InsightEngine(model, max_chunk_tokens=10).generate_brief(transcript)
+
+        assert not result.succeeded
+        assert result.raw_text == "bad again"
 
 
 class TestFallback:

@@ -41,6 +41,44 @@ Transcript of the call:
 
 BRIEF_PROMPT = ChatPromptTemplate.from_messages([("system", _SYSTEM), ("human", _USER)])
 
+_CHUNK_SYSTEM = (
+    _SYSTEM
+    + """
+
+You are seeing part {part} of {total} of the transcript. Produce the brief for \
+just this portion; it will later be merged with the other parts."""
+)
+
+_CHUNK_USER = """\
+Part {part} of {total} of the transcript:
+<transcript>
+{transcript}
+</transcript>"""
+
+CHUNK_BRIEF_PROMPT = ChatPromptTemplate.from_messages(
+    [("system", _CHUNK_SYSTEM), ("human", _CHUNK_USER)]
+)
+
+_SYNTHESIS_SYSTEM = (
+    _SYSTEM
+    + """
+
+You are given structured notes extracted from consecutive portions of one call. \
+Merge them into a single brief covering the whole call: deduplicate overlapping \
+insights and action items, and keep every supporting_quote verbatim as given."""
+)
+
+_SYNTHESIS_USER = """\
+Additional context from the student: {user_context}
+
+Notes from the portions of the call, in order:
+
+{parts}"""
+
+SYNTHESIS_PROMPT = ChatPromptTemplate.from_messages(
+    [("system", _SYNTHESIS_SYSTEM), ("human", _SYNTHESIS_USER)]
+)
+
 _REPAIR_INSTRUCTION = """\
 Your previous response could not be parsed into the required structure. \
 Error: {error}
@@ -53,6 +91,23 @@ def build_brief_messages(transcript: str, user_context: str | None = None) -> li
     """Build the system + human message pair asking for a structured brief."""
     context = user_context.strip() if user_context and user_context.strip() else "None provided."
     return BRIEF_PROMPT.format_messages(transcript=transcript, user_context=context)
+
+
+def build_chunk_brief_messages(chunk_text: str, part: int, total: int) -> list[BaseMessage]:
+    """Build the map-step messages: a brief for one portion of a long call."""
+    return CHUNK_BRIEF_PROMPT.format_messages(transcript=chunk_text, part=part, total=total)
+
+
+def build_synthesis_messages(
+    part_notes: list[str], user_context: str | None = None
+) -> list[BaseMessage]:
+    """Build the reduce-step messages: merge per-portion notes into one brief."""
+    context = user_context.strip() if user_context and user_context.strip() else "None provided."
+    parts = "\n\n".join(
+        f"--- Part {i} of {len(part_notes)} ---\n{notes}"
+        for i, notes in enumerate(part_notes, start=1)
+    )
+    return SYNTHESIS_PROMPT.format_messages(parts=parts, user_context=context)
 
 
 def build_repair_messages(
