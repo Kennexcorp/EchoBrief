@@ -62,7 +62,7 @@ Explicitly deferring diarization, live transcription, and history tracking keeps
 | **Privacy** | No network calls leave localhost. Audio files and transcripts are processed in a temp directory and deleted on session end. |
 | **Reliability** | Graceful degradation: if Ollama is unreachable, the user still receives the raw transcript plus a clear remediation message. |
 | **Output validity** | LLM output must parse into the expected structure ≥ 95% of runs (enforced via structured output / JSON schema, with one automatic retry on parse failure). |
-| **Portability** | Runs on Windows, macOS, Linux with `pip install -r requirements.txt` + a running Ollama daemon. Documented model pull commands. |
+| **Portability** | Runs on Windows, macOS, Linux with `uv sync` + a running Ollama daemon — uv provisions Python and pins all dependencies via `uv.lock`. Documented model pull commands. |
 | **Testability** | ≥ 80% unit-test coverage on the pipeline layer (transcription wrapper, prompt builder, output parser). |
 
 ---
@@ -113,7 +113,7 @@ Explicitly deferring diarization, live transcription, and history tracking keeps
 | **LLM orchestration** | `langchain-ollama` (`ChatOllama`) + LangChain prompt templates & output parsing | Raw `requests` to Ollama REST API, `ollama` Python client | LangChain is justified here for three concrete reasons: (1) `ChatPromptTemplate` gives versioned, testable prompt construction instead of f-string spaghetti; (2) `.with_structured_output()` / Pydantic parsing enforces our F4 output contract with automatic validation; (3) swapping `ChatOllama` for any other chat model later is a one-line change, future-proofing the roadmap. Trade-off acknowledged: LangChain adds dependency weight for what is currently a single-chain app — if the project never grows beyond one prompt, the raw `ollama` client would be leaner. We accept the weight for the structured-output and portability wins. |
 | **UI** | Streamlit | Gradio, Flask + React | Given as a constraint; also correct for the audience — `st.file_uploader`, `st.status`, and `st.download_button` map 1:1 onto our user flow with near-zero frontend code. |
 | **Audio handling** | `ffmpeg` (system) + faster-whisper's built-in decoding | `pydub`, `librosa` | faster-whisper decodes common formats directly (via PyAV/ffmpeg), so we avoid an extra preprocessing dependency. `pydub` only added if we later need trimming/normalization. |
-| **Packaging & distribution** | `pip` + host-installed Ollama (primary path); Docker + docker-compose (secondary path) | Docker-only, pip-only | Deliberate dual-path decision matched to the audience. **Primary:** non-technical students get the lightest install — `pip install -r requirements.txt` plus the one-click Ollama installer; Docker Desktop would add friction for exactly the users we're targeting. **Secondary:** a Dockerfile (app) + `docker-compose.yml` (app + `ollama/ollama` service, shared network, named volume for model weights) gives reviewers and power users a one-command reproducible stand-up of the full architecture, eliminating the ffmpeg/CTranslate2 "works on my machine" class of issues entirely. Trade-offs accepted: image stays lean by mounting a Whisper model cache volume instead of baking multi-GB weights into the image; GPU passthrough (NVIDIA Container Toolkit) documented but not required. |
+| **Packaging & distribution** | `uv` + host-installed Ollama (primary path); Docker + docker-compose (secondary path) | pip + venv, Docker-only, uv-only | Deliberate dual-path decision matched to the audience. **Primary:** non-technical students get the lightest install — `uv sync` plus the one-click Ollama installer. uv beats pip + venv on exactly this audience's failure modes: no separate Python install (uv provisions it), no venv-activation step (the classic Windows tripwire), and `uv.lock` makes the light path reproducible, not just the Docker path. Docker Desktop would add friction for exactly the users we're targeting. **Secondary:** a Dockerfile (app) + `docker-compose.yml` (app + `ollama/ollama` service, shared network, named volume for model weights) gives reviewers and power users a one-command reproducible stand-up of the full architecture, eliminating the ffmpeg/CTranslate2 "works on my machine" class of issues entirely. Trade-offs accepted: image stays lean by mounting a Whisper model cache volume instead of baking multi-GB weights into the image; GPU passthrough (NVIDIA Container Toolkit) documented but not required. |
 
 ### Prompt Design (the F3/F4 contract)
 
@@ -152,11 +152,12 @@ The Insight Engine sends a system + user message pair:
 
 ## Phase 5: Execution Standards (the Evidence Layer)
 
-- **Repo structure:** `app/` (Streamlit), `core/` (transcription.py, insights.py, prompts.py, schemas.py), `tests/`, `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`.
-- **Containerization:** multi-stage Dockerfile (builder installs deps incl. ffmpeg → slim runtime image); compose defines `app` + `ollama` services on a shared network with a named volume for model weights; CI builds the image on every push to `main` so the tested code and the shipped image are the same artifact.
+- **Repo structure:** `app/` (Streamlit), `core/` (transcription.py, insights.py, prompts.py, schemas.py), `tests/`, `pyproject.toml` + `uv.lock`, `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`.
+- **Dependency management:** uv with `pyproject.toml` as the single manifest (runtime deps + a `dev` group for pytest/pytest-cov/ruff) and `uv.lock` committed for reproducible installs everywhere — local, CI, and Docker all install from the same lock.
+- **Containerization:** multi-stage Dockerfile (builder runs `uv sync --frozen --no-dev` + installs ffmpeg → slim runtime image); compose defines `app` + `ollama` services on a shared network with a named volume for model weights; CI builds the image on every push to `main` so the tested code and the shipped image are the same artifact.
 - **Git hygiene:** conventional commits — `feat: add faster-whisper transcription wrapper`, `feat: structured-output parsing with pydantic schema`, `test: chunking behaviour for >8k-token transcripts`.
 - **Testing:** unit tests for prompt builder, output parser (valid/invalid/partial JSON), and chunker; integration test with a bundled 30-second sample clip; mock Ollama responses so CI never needs a live model.
-- **CI/CD:** GitHub Actions on every push — `ruff` lint, `pytest` with coverage gate (≥ 80%), badge in README. (Deployment stays local by design — the "ship" artifact is a reproducible install, which itself is the differentiator.)
+- **CI/CD:** GitHub Actions on every push — `astral-sh/setup-uv` + `uv sync --frozen`, then `ruff` lint and `pytest` with coverage gate (≥ 80%), badge in README. (Deployment stays local by design — the "ship" artifact is a reproducible install, which itself is the differentiator.)
 - **Config:** `.env.example` with `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `WHISPER_MODEL_SIZE`, `WHISPER_COMPUTE_TYPE`.
 
 ---
@@ -167,21 +168,25 @@ The Insight Engine sends a system + user message pair:
 - **Task:** Build a fully local pipeline converting a call recording into a verified, structured action brief on consumer hardware.
 - **Action:** Chose faster-whisper over vanilla Whisper for ~4x CPU inference speedup with INT8 quantization; used LangChain's `ChatOllama` with Pydantic-validated structured output to guarantee a machine-parseable brief; designed a map-reduce chunking strategy for hour-long transcripts; enforced quality with mocked-LLM CI at 80%+ coverage.
 - **Result (targets to measure and report):** e.g. *"Transcribed 30-min calls in X min on a 4-core CPU (Y× faster than vanilla Whisper baseline); structured-output validity of Z% across N test calls; end-to-end call-to-brief time under M minutes."* Replace with your real measured numbers — the measurement itself is part of the story.
-- **Developer Empathy Block:** two clearly-labeled install paths — **Path A (recommended for students):** 5-command quickstart (clone → venv → pip install → `ollama pull llama3.1:8b` → `streamlit run app/main.py`); **Path B (reproducible/reviewer):** `docker compose up` standing up the full app + Ollama stack in one command. Plus `.env.example`, troubleshooting table (Ollama not running, ffmpeg missing, low RAM, `host.docker.internal` networking), and roadmap: speaker diarization (WhisperX), call history dashboard, calendar export, multilingual support. Case-study framing: *"Primary UX optimized for non-technical users; containerized path provided for reproducibility — packaging matched to the user, not to fashion."*
+- **Developer Empathy Block:** two clearly-labeled install paths — **Path A (recommended for students):** 4-command quickstart (clone → `uv sync` → `ollama pull llama3.1:8b` → `uv run streamlit run app/main.py`); **Path B (reproducible/reviewer):** `docker compose up` standing up the full app + Ollama stack in one command. Plus `.env.example`, troubleshooting table (Ollama not running, ffmpeg missing, low RAM, `host.docker.internal` networking), and roadmap: speaker diarization (WhisperX), call history dashboard, calendar export, multilingual support. Case-study framing: *"Primary UX optimized for non-technical users; containerized path provided for reproducibility — packaging matched to the user, not to fashion."*
 
 ---
 
 ## Appendix: Dependency Shortlist
 
+Declared in `pyproject.toml`, locked in `uv.lock` (managed with uv):
+
 ```
+# [project.dependencies]
 streamlit
 faster-whisper          # STT — CTranslate2 runtime, models pulled from HF Hub
 langchain
 langchain-ollama        # ChatOllama, OllamaEmbeddings (if RAG added later)
 langchain-core
 pydantic                # output schemas
+# [dependency-groups] dev
 pytest, pytest-cov, ruff
-# system: ffmpeg, ollama daemon
+# system: uv, ffmpeg, ollama daemon
 # optional path B: Docker Desktop / Docker Engine + Compose
 ```
 

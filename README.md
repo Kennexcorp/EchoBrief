@@ -3,7 +3,7 @@
 **Turn recorded supervisor calls into summaries, insights, and tracked next steps — 100% locally.** No cloud APIs, no per-token billing, no audio ever leaving your machine. Built on faster-whisper + Ollama + Streamlit.
 
 <!-- Badges: fill in your repo path -->
-![CI](https://github.com/YOUR_USERNAME/echobrief/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Kennexcorp/echobrief/actions/workflows/ci.yml/badge.svg)
 ![Coverage](PLACEHOLDER_COVERAGE_BADGE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -32,16 +32,15 @@ Export the whole brief as Markdown and drop it into your notes.
 
 ## Quickstart
 
-### Path A — pip + Ollama (recommended)
+### Path A — uv + Ollama (recommended)
 
-Prereqs: Python 3.10+, [ffmpeg](https://ffmpeg.org/download.html), [Ollama](https://ollama.com/download).
+Prereqs: [uv](https://docs.astral.sh/uv/getting-started/installation/), [ffmpeg](https://ffmpeg.org/download.html), [Ollama](https://ollama.com/download). No Python install needed — uv fetches the right version automatically.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/echobrief && cd echobrief
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+git clone https://github.com/Kennexcorp/echobrief && cd echobrief
+uv sync
 ollama pull llama3.1:8b
-streamlit run app/main.py
+uv run streamlit run app/main.py
 ```
 
 First transcription downloads the Whisper `small` model (~500 MB) from the Hugging Face Hub automatically.
@@ -51,7 +50,7 @@ First transcription downloads the Whisper `small` model (~500 MB) from the Huggi
 Prereqs: Docker + Compose.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/echobrief && cd echobrief
+git clone https://github.com/Kennexcorp/echobrief && cd echobrief
 docker compose up
 ```
 
@@ -103,7 +102,7 @@ Upload (Streamlit) → faster-whisper (CTranslate2, INT8) → transcript
 |---|---|---|
 | **faster-whisper** | vanilla `openai-whisper`, HF `transformers` pipeline | CTranslate2 runtime is ~4× faster at identical accuracy with INT8 quantization — the difference between "usable on a student laptop" and not. Models still auto-download from the HF Hub. |
 | **`langchain-ollama` (ChatOllama)** | raw `requests` / `ollama` client | Versioned prompt templates, `.with_structured_output()` + Pydantic enforcement of the brief schema, and one-line model portability. Accepted trade-off: heavier dependency than the bare client for a single-chain app. |
-| **pip-first, Docker-second packaging** | Docker-only | The target user is a non-technical student; Docker Desktop is more friction than `pip` + Ollama's installer. The compose path exists for reproducibility and reviewers. Packaging matched to the user, not to fashion. |
+| **uv-first, Docker-second packaging** | pip + venv, Docker-only | The target user is a non-technical student; `uv sync` is one command with no venv-activation step (the classic Windows tripwire), installs Python itself, and pins everything via `uv.lock` — reproducibility on the light path too. The compose path exists for full-stack reproducibility and reviewers. Packaging matched to the user, not to fashion. |
 | **Ollama** | llama.cpp server, vLLM | Simplest cross-platform install and model management story for the audience. |
 
 Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DESIGN.md)
@@ -152,7 +151,7 @@ app/            Streamlit UI
 core/           transcription.py · insights.py · prompts.py · schemas.py
 tests/          unit + integration (mocked LLM)
 docs/           DESIGN.md (full planning doc) · model-eval.md · demo.gif
-Dockerfile, docker-compose.yml, .github/workflows/ci.yml
+pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/ci.yml
 ```
 
 ## License
