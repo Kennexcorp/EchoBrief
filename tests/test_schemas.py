@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.schemas import ActionItem, Brief, TranscriptSegment
+from core.schemas import ActionItem, Brief, Transcript, TranscriptSegment
 
 
 def action_item_data(**overrides: Any) -> dict[str, Any]:
@@ -49,6 +49,21 @@ class TestTranscriptSegment:
     def test_blank_text_is_rejected(self) -> None:
         with pytest.raises(ValidationError):
             TranscriptSegment(text="   ", start=0.0, end=1.0)
+
+
+class TestTranscript:
+    def test_text_joins_segments_in_order(self) -> None:
+        transcript = Transcript(
+            segments=[
+                TranscriptSegment(text="First part.", start=0.0, end=1.0),
+                TranscriptSegment(text="Second part.", start=1.0, end=2.0),
+            ]
+        )
+
+        assert transcript.text == "First part. Second part."
+
+    def test_empty_transcript_has_empty_text(self) -> None:
+        assert Transcript(segments=[]).text == ""
 
 
 class TestActionItem:

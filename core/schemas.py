@@ -33,6 +33,16 @@ class TranscriptSegment(BaseModel):
         return self
 
 
+class Transcript(BaseModel):
+    """A full transcription: ordered segments plus the joined full text."""
+
+    segments: list[TranscriptSegment]
+
+    @property
+    def text(self) -> str:
+        return " ".join(segment.text for segment in self.segments)
+
+
 class ActionItem(BaseModel):
     """A single follow-up task extracted from the call."""
 
