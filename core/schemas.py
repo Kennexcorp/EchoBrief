@@ -81,3 +81,18 @@ class Brief(BaseModel):
         if not value.strip():
             raise ValueError("must not be blank")
         return value
+
+
+class InsightResult(BaseModel):
+    """Outcome of insight extraction: a parsed ``Brief``, or the raw text fallback.
+
+    ``raw_text`` always holds the model's last response so the UI can show
+    something useful even when structured parsing failed (reliability NFR).
+    """
+
+    brief: Brief | None = None
+    raw_text: str = ""
+
+    @property
+    def succeeded(self) -> bool:
+        return self.brief is not None

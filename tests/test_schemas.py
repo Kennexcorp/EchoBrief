@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.schemas import ActionItem, Brief, Transcript, TranscriptSegment
+from core.schemas import ActionItem, Brief, InsightResult, Transcript, TranscriptSegment
 
 
 def action_item_data(**overrides: Any) -> dict[str, Any]:
@@ -64,6 +64,19 @@ class TestTranscript:
 
     def test_empty_transcript_has_empty_text(self) -> None:
         assert Transcript(segments=[]).text == ""
+
+
+class TestInsightResult:
+    def test_succeeded_when_brief_is_present(self) -> None:
+        result = InsightResult(brief=Brief.model_validate(brief_data()), raw_text="...")
+
+        assert result.succeeded
+
+    def test_not_succeeded_when_brief_is_missing(self) -> None:
+        result = InsightResult(brief=None, raw_text="unparseable output")
+
+        assert not result.succeeded
+        assert result.raw_text == "unparseable output"
 
 
 class TestActionItem:
