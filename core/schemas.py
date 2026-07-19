@@ -47,7 +47,10 @@ class ActionItem(BaseModel):
     """A single follow-up task extracted from the call."""
 
     task: str = Field(description="The action to take, phrased as one imperative sentence.")
-    owner: str = Field(description="Who is responsible, e.g. 'student' or 'supervisor'.")
+    owner: str = Field(
+        description="Who is responsible, using roles from the call, "
+        "e.g. 'me', 'supervisor', 'coach', 'client'."
+    )
     priority: Priority = Field(description="Urgency of the task: high, medium, or low.")
     suggested_deadline: str = Field(
         description="Deadline or timeframe as mentioned or implied in the call, e.g. 'Friday'."

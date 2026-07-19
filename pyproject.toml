@@ -1,7 +1,7 @@
 [project]
 name = "echobrief"
 version = "0.1.0"
-description = "Turn recorded supervisor calls into summaries, insights, and tracked next steps — 100% locally."
+description = "Turn recorded calls into summaries, insights, and tracked next steps — 100% locally."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

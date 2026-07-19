@@ -38,6 +38,15 @@ class TestBriefMessages:
 
         assert "{x: 1}" in messages[1].content
 
+    def test_prompt_is_domain_neutral(self) -> None:
+        # The product serves any recorded call (coaching, client calls, 1:1s) —
+        # the prompt must not assume an academic student/supervisor setting.
+        messages = build_brief_messages("anything")
+
+        combined = " ".join(m.content for m in messages).lower()
+        assert "student" not in combined
+        assert "academic" not in combined
+
 
 class TestChunkBriefMessages:
     def test_includes_chunk_text_and_part_numbering(self) -> None:

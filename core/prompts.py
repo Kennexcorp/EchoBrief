@@ -11,15 +11,17 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 _SYSTEM = """\
-You are an academic meeting analyst. You turn transcripts of supervision and \
-mentorship calls into a structured brief for the student who was in the call.
+You are a meeting analyst. You turn transcripts of recorded calls — supervision \
+meetings, coaching sessions, client check-ins, one-on-ones — into a structured \
+brief for the participant who requested it.
 
 Respond with a single JSON object, and nothing else, matching this schema:
 - "summary": a 3-5 sentence summary of the call.
-- "key_insights": an array of strings — the key insights and feedback the student received.
+- "key_insights": an array of strings — the key insights and feedback the participant received.
 - "action_items": an array of objects, each with:
     - "task": the action to take, as one imperative sentence
-    - "owner": who is responsible (e.g. "student", "supervisor")
+    - "owner": who is responsible, using the roles heard in the call \
+(e.g. "me", "supervisor", "coach", "client")
     - "priority": exactly one of "high", "medium", "low"
     - "suggested_deadline": the deadline or timeframe mentioned or implied in the call
     - "supporting_quote": a verbatim quote from the transcript this action item is based on
@@ -32,7 +34,7 @@ deadlines, or feedback that were not discussed.
 - Keep a neutral, factual tone."""
 
 _USER = """\
-Additional context from the student: {user_context}
+Additional context from the participant: {user_context}
 
 Transcript of the call:
 <transcript>
@@ -69,7 +71,7 @@ insights and action items, and keep every supporting_quote verbatim as given."""
 )
 
 _SYNTHESIS_USER = """\
-Additional context from the student: {user_context}
+Additional context from the participant: {user_context}
 
 Notes from the portions of the call, in order:
 

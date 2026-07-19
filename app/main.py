@@ -21,8 +21,8 @@ def main() -> None:
     st.set_page_config(page_title="EchoBrief", page_icon="🎙️")
     st.title("🎙️ EchoBrief")
     st.caption(
-        "Turn recorded supervisor calls into summaries, insights, and tracked "
-        "next steps — 100% locally. No audio ever leaves your machine."
+        "Turn recorded calls into summaries, insights, and tracked next steps "
+        "— 100% locally. No audio ever leaves your machine."
     )
 
     settings = Settings.from_env()

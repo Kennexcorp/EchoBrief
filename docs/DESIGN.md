@@ -19,6 +19,8 @@ Students and early-career professionals regularly have review calls with supervi
 - **Primary:** University students (undergrad/postgrad) with recurring supervisor or thesis-advisor meetings.
 - **Secondary:** Interns, mentees in professional development programs, research assistants.
 
+> **Post-build broadening (2026-07-19):** the pipeline proved fully domain-neutral, so prompts and copy were generalized to any recorded call (coaching sessions, client check-ins, 1:1s). The student use case remains the flagship narrative; specialization happens through the optional user-context field rather than per-domain modes.
+
 ### User Constraints
 - Consumer-grade hardware (laptop, likely no dedicated GPU) — the pipeline must run acceptably on CPU.
 - Non-technical users — a single upload-and-read workflow, no CLI knowledge required.
