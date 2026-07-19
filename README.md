@@ -17,7 +17,7 @@
 
 ## What it does
 
-Students lose the value of mentor and supervisor calls because feedback and action items live inside un-reviewed audio recordings. EchoBrief takes an uploaded call recording (`.mp3`, `.wav`, `.m4a`) and produces:
+Students lose the value of mentor and supervisor calls because feedback and action items live inside un-reviewed audio recordings. EchoBrief takes an uploaded call recording (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg` — WhatsApp voice notes work out of the box) and produces:
 
 1. **A full transcript** (local Whisper inference — expandable panel)
 2. **A 3–5 sentence summary** of the call

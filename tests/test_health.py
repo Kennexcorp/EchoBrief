@@ -3,7 +3,7 @@
 from typing import Any
 
 from core.config import Settings
-from core.health import check_ollama
+from core.health import check_ollama, list_models
 
 
 def fake_fetch(tags: list[str]):
@@ -59,3 +59,17 @@ class TestHealthy:
         status = check_ollama(settings, fetch_json=lambda url: {"unexpected": True})
 
         assert not status.ok
+
+
+class TestListModels:
+    def test_returns_available_model_names(self) -> None:
+        settings = Settings.from_env({})
+
+        models = list_models(settings, fetch_json=fake_fetch(["llama3.1:8b", "qwen2.5:7b"]))
+
+        assert models == ["llama3.1:8b", "qwen2.5:7b"]
+
+    def test_unreachable_daemon_yields_empty_list(self) -> None:
+        settings = Settings.from_env({})
+
+        assert list_models(settings, fetch_json=failing_fetch) == []
