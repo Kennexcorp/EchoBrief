@@ -3,6 +3,15 @@
 All notable changes to EchoBrief are documented here.
 This file is generated from [conventional commits](https://www.conventionalcommits.org) by [git-cliff](https://git-cliff.org).
 
+## [0.1.1] - 2026-07-19
+
+### CI/CD
+
+- Build multi-arch image for amd64 and arm64
+
+### Documentation
+
+- Add git-cliff changelog generation
 ## [0.1.0] - 2026-07-19
 
 ### CI/CD
