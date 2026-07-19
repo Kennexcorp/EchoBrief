@@ -23,3 +23,13 @@ jobs:
 
       - name: Test with coverage gate
         run: uv run pytest --cov=core --cov-fail-under=80
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t echobrief .

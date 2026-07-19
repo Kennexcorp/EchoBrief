@@ -52,9 +52,29 @@ Prereqs: Docker + Compose.
 ```bash
 git clone https://github.com/Kennexcorp/echobrief && cd echobrief
 docker compose up
+# first run only — pull the LLM into the ollama service:
+docker compose exec ollama ollama pull llama3.1:8b
 ```
 
 This stands up both the app and an Ollama service on a shared network, with model weights persisted in named volumes (nothing multi-GB is baked into the image). Using Ollama on your host instead? Set `OLLAMA_BASE_URL=http://host.docker.internal:11434` in `.env`.
+
+### CLI (no UI needed)
+
+The full pipeline also runs headless — handy for scripting or piping briefs straight into your notes:
+
+```bash
+uv run echobrief path/to/call.mp3                          # brief to stdout
+uv run echobrief call.opus --context "thesis review" -o brief.md
+```
+
+| Argument | Required | Description |
+|---|---|---|
+| `audio` | yes | Path to the recording (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg`) |
+| `--context` | no | One line of context that sharpens the brief, e.g. `"thesis progress review"` |
+| `--output`, `-o` | no | Write the brief to this file instead of stdout |
+| `--help`, `-h` | no | Show usage and exit |
+
+Progress goes to stderr, the Markdown brief to stdout (or `--output` file), so `uv run echobrief call.mp3 > brief.md` works too.
 
 ### Configuration
 
