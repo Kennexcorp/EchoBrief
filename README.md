@@ -32,9 +32,25 @@ Export the whole brief as Markdown and drop it into your notes.
 
 ## Quickstart
 
-### Path A — uv + Ollama (recommended)
+### Path A — pull the image (recommended, fastest)
 
-Prereqs: [uv](https://docs.astral.sh/uv/getting-started/installation/), [ffmpeg](https://ffmpeg.org/download.html), [Ollama](https://ollama.com/download). No Python install needed — uv fetches the right version automatically.
+The quickest way to try EchoBrief: no clone, no build, no Python. Prereqs: [Docker](https://docs.docker.com/get-docker/) and [Ollama](https://ollama.com/download) running on your machine.
+
+```bash
+ollama pull llama3.1:8b
+docker run --rm -p 8501:8501 \
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -v echobrief-whisper:/data/hf-cache \
+  ghcr.io/kennexcorp/echobrief:latest
+```
+
+Then open <http://localhost:8501>. The image is multi-arch, so it runs natively on both Intel and Apple Silicon. The `OLLAMA_BASE_URL` line points the container at the Ollama on your host; the `-v` flag caches the Whisper `small` model (~500 MB, downloaded on first transcription) so it isn't re-fetched each run.
+
+> On Linux, `host.docker.internal` isn't automatic — add `--add-host=host.docker.internal:host-gateway` to the `docker run`, or use the self-contained Compose stack (Path C).
+
+### Path B — uv + Ollama (recommended for development)
+
+Run from source. Prereqs: [uv](https://docs.astral.sh/uv/getting-started/installation/), [ffmpeg](https://ffmpeg.org/download.html), [Ollama](https://ollama.com/download). No Python install needed — uv fetches the right version automatically.
 
 ```bash
 git clone https://github.com/Kennexcorp/echobrief && cd echobrief
@@ -45,9 +61,9 @@ uv run streamlit run app/main.py
 
 First transcription downloads the Whisper `small` model (~500 MB) from the Hugging Face Hub automatically.
 
-### Path B — Docker (one command, fully reproducible)
+### Path C — Docker Compose (self-contained stack)
 
-Prereqs: Docker + Compose.
+Prereqs: Docker + Compose. Bundles Ollama too, so nothing else needs to be installed or running.
 
 ```bash
 git clone https://github.com/Kennexcorp/echobrief && cd echobrief
@@ -56,9 +72,7 @@ docker compose up
 docker compose exec ollama ollama pull llama3.1:8b
 ```
 
-This stands up both the app and an Ollama service on a shared network, with model weights persisted in named volumes (nothing multi-GB is baked into the image). Using Ollama on your host instead? Set `OLLAMA_BASE_URL=http://host.docker.internal:11434` in `.env`.
-
-Prefer not to build? Once a release is cut, pull the published image instead: `docker pull ghcr.io/kennexcorp/echobrief:latest` (uncomment the `image:` line in `docker-compose.yml`).
+This stands up both the app and an Ollama service on a shared network, with model weights persisted in named volumes (nothing multi-GB is baked into the image). To build from your local checkout instead of pulling the published image, the `docker-compose.yml` uses `build: .` by default.
 
 ### CLI (no UI needed)
 
@@ -148,7 +162,7 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 |---|---|
 | `Connection refused` on startup health check | Ollama isn't running — `ollama serve`, or check `OLLAMA_BASE_URL` |
 | Model not found error | `ollama pull llama3.1:8b` (or whatever `OLLAMA_MODEL` is set to) |
-| `ffmpeg not found` (Path A) | Install ffmpeg and ensure it's on PATH; Path B bundles it |
+| `ffmpeg not found` (Path B) | Install ffmpeg and ensure it's on PATH; the Docker images (Paths A & C) bundle it |
 | Docker app can't reach host Ollama | `OLLAMA_BASE_URL=http://host.docker.internal:11434` |
 | Very slow / out of memory | `WHISPER_MODEL_SIZE=base`; close other apps; INT8 is already the default |
 
