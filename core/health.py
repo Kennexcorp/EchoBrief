@@ -35,6 +35,15 @@ def _model_matches(wanted: str, available: str) -> bool:
     return ":" not in wanted and available.split(":", 1)[0] == wanted
 
 
+def list_models(settings: Settings, fetch_json: Callable[[str], Any] = _fetch_json) -> list[str]:
+    """Names of the models pulled into Ollama; empty list if unreachable."""
+    try:
+        payload = fetch_json(f"{settings.ollama_base_url}/api/tags")
+        return [model["name"] for model in payload["models"]]
+    except (OSError, ValueError, KeyError, TypeError):
+        return []
+
+
 def check_ollama(
     settings: Settings, fetch_json: Callable[[str], Any] = _fetch_json
 ) -> HealthStatus:

@@ -23,7 +23,7 @@ Students and early-career professionals regularly have review calls with supervi
 - Consumer-grade hardware (laptop, likely no dedicated GPU) — the pipeline must run acceptably on CPU.
 - Non-technical users — a single upload-and-read workflow, no CLI knowledge required.
 - Zero cloud dependency — all inference (speech-to-text and LLM) runs locally.
-- Common audio formats from phone/laptop recordings: `.mp3`, `.wav`, `.m4a`.
+- Common audio formats from phone/laptop recordings: `.mp3`, `.wav`, `.m4a`, plus `.opus`/`.ogg` (WhatsApp voice notes).
 
 ### Scope Boundaries
 
@@ -46,7 +46,7 @@ Explicitly deferring diarization, live transcription, and history tracking keeps
 
 | ID | Requirement |
 |---|---|
-| F1 | User can upload an audio file (`.mp3`, `.wav`, `.m4a`) up to 60 minutes / ~200 MB via the Streamlit UI. |
+| F1 | User can upload an audio file (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg`) up to 60 minutes / ~200 MB via the Streamlit UI. |
 | F2 | System transcribes the audio locally and displays the full transcript in an expandable panel. |
 | F3 | Transcript is injected into a structured prompt template and sent to a local Ollama model. |
 | F4 | LLM returns a structured brief: **(a)** 3–5 sentence summary, **(b)** key insights/feedback received, **(c)** numbered actionable next steps with suggested priority. |
