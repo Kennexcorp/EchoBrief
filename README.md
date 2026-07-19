@@ -4,6 +4,7 @@
 
 ![CI](https://github.com/Kennexcorp/echobrief/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
+![Release](https://img.shields.io/github/v/release/Kennexcorp/echobrief)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -56,6 +57,8 @@ docker compose exec ollama ollama pull llama3.1:8b
 ```
 
 This stands up both the app and an Ollama service on a shared network, with model weights persisted in named volumes (nothing multi-GB is baked into the image). Using Ollama on your host instead? Set `OLLAMA_BASE_URL=http://host.docker.internal:11434` in `.env`.
+
+Prefer not to build? Once a release is cut, pull the published image instead: `docker pull ghcr.io/kennexcorp/echobrief:latest` (uncomment the `image:` line in `docker-compose.yml`).
 
 ### CLI (no UI needed)
 
@@ -166,8 +169,21 @@ app/            Streamlit UI
 core/           transcription.py · insights.py · prompts.py · schemas.py
 tests/          unit + integration (mocked LLM)
 docs/           DESIGN.md (full planning doc) · model-eval.md · demo.gif
-pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/ci.yml
+pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
 ```
+
+## Releasing
+
+Releases are cut by pushing a version tag; a GitHub Actions workflow runs the tests, then publishes the Docker image to `ghcr.io/kennexcorp/echobrief` and creates a GitHub Release with auto-generated notes.
+
+```bash
+# 1. bump the version in pyproject.toml (must match the tag), commit it
+# 2. tag and push:
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow fails fast if the tag and `pyproject.toml` version disagree.
 
 ## License
 
