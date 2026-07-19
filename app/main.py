@@ -1,4 +1,4 @@
-"""EchoBrief Streamlit UI — a thin presentation layer over the core pipeline.
+"""EchoBrief Streamlit UI: a thin presentation layer over the core pipeline.
 
 No business logic lives here: this file renders widgets, hands files to the
 core services, and displays what they return.
@@ -21,8 +21,8 @@ def main() -> None:
     st.set_page_config(page_title="EchoBrief", page_icon="🎙️")
     st.title("🎙️ EchoBrief")
     st.caption(
-        "Turn recorded calls into summaries, insights, and tracked next steps "
-        "— 100% locally. No audio ever leaves your machine."
+        "Turn recorded calls into summaries, insights, and tracked next steps, "
+        "100% locally. No audio ever leaves your machine."
     )
 
     settings = Settings.from_env()
@@ -52,7 +52,7 @@ def main() -> None:
 
     if uploaded is not None and st.button("Generate brief", type="primary"):
         with st.status("Processing...", expanded=True) as progress:
-            st.write("Transcribing locally — this can take a while on CPU...")
+            st.write("Transcribing locally. This can take a while on CPU...")
             transcript = _transcribe_upload(uploaded, settings)
             st.write(
                 f"Transcribed {len(transcript.segments)} segments. "
@@ -74,7 +74,7 @@ def _transcribe_upload(uploaded, settings: Settings) -> Transcript:
         settings.whisper_model_size, settings.whisper_compute_type
     )
     suffix = Path(uploaded.name).suffix or ".mp3"
-    # NamedTemporaryFile deletes on close — uploaded audio never outlives the run (privacy NFR).
+    # NamedTemporaryFile deletes on close, so uploaded audio never outlives the run (privacy NFR).
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
         tmp.write(uploaded.getbuffer())
         tmp.flush()
@@ -110,7 +110,7 @@ def _render_result(result: InsightResult, transcript: Transcript) -> None:
             )
             st.markdown(f"> {item.supporting_quote}")
     else:
-        st.warning("Structured parsing failed — showing the model's raw output.")
+        st.warning("Structured parsing failed. Showing the model's raw output.")
         st.text(result.raw_text)
 
     with st.expander("Full transcript"):
