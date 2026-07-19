@@ -19,6 +19,7 @@ echobrief = "core.cli:main"
 
 [dependency-groups]
 dev = [
+    "git-cliff>=2.13.1",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.22",

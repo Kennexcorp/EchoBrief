@@ -1,0 +1,50 @@
+# git-cliff configuration — generates CHANGELOG.md from conventional commits.
+# Regenerate with:  git cliff --tag vX.Y.Z -o CHANGELOG.md
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to EchoBrief are documented here.
+This file is generated from [conventional commits](https://www.conventionalcommits.org) by [git-cliff](https://git-cliff.org).
+
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first | upper_first }}\
+{% endfor %}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+# Map commit prefixes to changelog sections; order here is the display order.
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^test", group = "Testing" },
+    { message = "^ci", group = "CI/CD" },
+    { message = "^chore", group = "Chores" },
+    { message = "^build", group = "Build" },
+    { message = ".*", group = "Other" },
+]
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9]*"
+# Ignore pre-release tags (anything with a hyphen, e.g. v0.1.0-rc1) so dry-run
+# tags never create their own changelog section.
+ignore_tags = ".*-.*"
+sort_commits = "oldest"

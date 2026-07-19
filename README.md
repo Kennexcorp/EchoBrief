@@ -169,18 +169,20 @@ app/            Streamlit UI
 core/           transcription.py · insights.py · prompts.py · schemas.py
 tests/          unit + integration (mocked LLM)
 docs/           DESIGN.md (full planning doc) · model-eval.md · demo.gif
-pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
+CHANGELOG.md, cliff.toml, pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
 ```
 
 ## Releasing
 
-Releases are cut by pushing a version tag; a GitHub Actions workflow runs the tests, then publishes the Docker image to `ghcr.io/kennexcorp/echobrief` and creates a GitHub Release with auto-generated notes.
+Releases are cut by pushing a version tag. A GitHub Actions workflow runs the tests, publishes the Docker image to `ghcr.io/kennexcorp/echobrief`, and creates a GitHub Release with auto-generated notes. The repo-level [`CHANGELOG.md`](CHANGELOG.md) is regenerated from conventional commits with [git-cliff](https://git-cliff.org).
 
 ```bash
 # 1. bump the version in pyproject.toml (must match the tag), commit it
-# 2. tag and push:
-git tag v0.1.0
-git push origin v0.1.0
+# 2. regenerate and commit the changelog for the new version:
+uv run git-cliff --tag vX.Y.Z -o CHANGELOG.md
+# 3. tag and push — the workflow does the rest:
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 The workflow fails fast if the tag and `pyproject.toml` version disagree.
