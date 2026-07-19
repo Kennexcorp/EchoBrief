@@ -97,9 +97,9 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
-def create_insight_engine(settings: Settings) -> InsightEngine:
-    """Build an engine backed by ChatOllama with Ollama's JSON-schema mode enforced."""
-    model = ChatOllama(
+def create_chat_model(settings: Settings) -> ChatOllama:
+    """The ChatOllama the engine runs on — exposed so benchmark/eval scripts can wrap it."""
+    return ChatOllama(
         model=settings.ollama_model,
         base_url=settings.ollama_base_url,
         format=Brief.model_json_schema(),
@@ -108,4 +108,8 @@ def create_insight_engine(settings: Settings) -> InsightEngine:
         # plus the system prompt and JSON response, and stays laptop-friendly.
         num_ctx=8192,
     )
-    return InsightEngine(model)
+
+
+def create_insight_engine(settings: Settings) -> InsightEngine:
+    """Build an engine backed by ChatOllama with Ollama's JSON-schema mode enforced."""
+    return InsightEngine(create_chat_model(settings))

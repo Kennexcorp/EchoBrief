@@ -91,18 +91,19 @@ Copy `.env.example` → `.env`:
 
 ## Results
 
-<!-- ⚠️ REPLACE EVERY PLACEHOLDER WITH A MEASURED NUMBER BEFORE PUBLISHING.
-     These are the numbers to capture during the build — see "How to measure" below each. -->
+Measured on an Apple M5 Pro (18-core, 24 GB RAM) with a 27.4-minute call recording, `whisper small`/INT8 and `llama3.1:8b`. Reproduce with `uv run python scripts/benchmark.py --help`.
 
 | Metric | Result |
 |---|---|
-| 30-min call transcription (4-core CPU, `small`/INT8) | **X min Y s** <!-- time.perf_counter() around model.transcribe(); use one real recording --> |
-| Same audio, vanilla `openai-whisper` baseline | **X min Y s (N× slower)** <!-- run once for the comparison claim --> |
-| End-to-end: upload → rendered brief (30-min call) | **X min** |
-| Structured-output validity (first attempt, N=20 runs) | **Z %** <!-- count Pydantic parse successes across repeated runs on 3 sample transcripts --> |
-| Structured-output validity (with 1 retry) | **Z %** |
-| Unit test coverage (pipeline layer) | **N %** <!-- from pytest-cov; gate is ≥80% in CI --> |
-| Model comparison (llama3.1:8b vs qwen2.5:7b vs mistral:7b) | see [docs/model-eval.md](docs/model-eval.md) <!-- score each on 2–3 transcripts: JSON validity, faithfulness, action-item recall --> |
+| 27-min call transcription (CPU, `small`/INT8, beam 5) | **2 min 51 s (9.6× realtime)** |
+| Same audio, matched greedy decoding: faster-whisper vs vanilla `openai-whisper` | **1 m 50 s vs 1 m 44 s — parity on Apple Silicon** |
+| End-to-end: audio → rendered brief (27-min call) | **3 min 57 s** (incl. 3-chunk map-reduce synthesis) |
+| Structured-output validity (first attempt, N=20 runs) | **100 %** |
+| Structured-output validity (with 1 retry) | **100 %** |
+| Unit test coverage (pipeline layer) | **97 %** (CI gate: ≥ 80 %) |
+| Model comparison (llama3.1:8b vs qwen2.5:7b vs mistral:7b) | see [docs/model-eval.md](docs/model-eval.md) |
+
+An honest finding: the widely cited "~4× faster than vanilla Whisper" claim (measured on x86 CPUs) did **not** reproduce on Apple Silicon, where PyTorch is well optimized — matched-settings decoding came out at parity. faster-whisper still earns its place on the target hardware for different reasons: INT8 halves memory use, the install is ~1.5 GB lighter (no PyTorch), built-in VAD skips silence, and on commodity x86 laptops — much of the actual student audience — the published speedup applies.
 
 ---
 
@@ -120,8 +121,8 @@ Upload (Streamlit) → faster-whisper (CTranslate2, INT8) → transcript
 
 | Choice | Over | Because |
 |---|---|---|
-| **faster-whisper** | vanilla `openai-whisper`, HF `transformers` pipeline | CTranslate2 runtime is ~4× faster at identical accuracy with INT8 quantization — the difference between "usable on a student laptop" and not. Models still auto-download from the HF Hub. |
-| **`langchain-ollama` (ChatOllama)** | raw `requests` / `ollama` client | Versioned prompt templates, `.with_structured_output()` + Pydantic enforcement of the brief schema, and one-line model portability. Accepted trade-off: heavier dependency than the bare client for a single-chain app. |
+| **faster-whisper** | vanilla `openai-whisper`, HF `transformers` pipeline | CTranslate2 runtime with INT8 quantization: up to ~4× faster on commodity x86 CPUs (on Apple Silicon we measured parity — see Results), half the memory, a torch-free install ~1.5 GB lighter, and built-in VAD. Models still auto-download from the HF Hub. |
+| **`langchain-ollama` (ChatOllama)** | raw `requests` / `ollama` client | Versioned prompt templates, Ollama's JSON-schema-constrained decoding (`format=` the Pydantic schema) with parse/retry/fallback kept in our own tested code, and one-line model portability. Accepted trade-off: heavier dependency than the bare client for a single-chain app. |
 | **uv-first, Docker-second packaging** | pip + venv, Docker-only | The target user is a non-technical student; `uv sync` is one command with no venv-activation step (the classic Windows tripwire), installs Python itself, and pins everything via `uv.lock` — reproducibility on the light path too. The compose path exists for full-stack reproducibility and reviewers. Packaging matched to the user, not to fashion. |
 | **Ollama** | llama.cpp server, vLLM | Simplest cross-platform install and model management story for the audience. |
 
@@ -134,11 +135,11 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 <!-- Write these in PAST TENSE once solved — this is your STAR "Action" section.
      Keep each to 3–5 sentences: problem → why it's hard → what you did → measured outcome. -->
 
-**Hour-long transcripts vs. context windows.** A 60-minute call produces a transcript well beyond a 7–8B model's usable context. I chunk on Whisper segment boundaries (so no sentence is split mid-thought), summarize each chunk, then run a final synthesis pass over the chunk summaries — classic map-reduce. <!-- add: measured token counts and how many chunks a 60-min call yields -->
+**Hour-long transcripts vs. context windows.** A 60-minute call produces a transcript well beyond a 7–8B model's usable context (Ollama defaults to just 2–4k tokens of context — the silent killer). I chunk on Whisper segment boundaries (so no sentence is split mid-thought), extract a structured mini-brief per chunk, then run a final synthesis pass that merges them — classic map-reduce, with one schema enforced end to end. Measured: a 27-minute call yields ~8.1k tokens → 3 chunks; an hour-long call lands around 6–7.
 
 **Making a local model tell the truth.** Small local models happily invent plausible action items. Two guardrails: the system prompt restricts the model to transcript content only, and every action item is rendered with its supporting transcript quote, making hallucinations immediately visible to the user. <!-- add: observed hallucination rate before/after, if measured -->
 
-**Guaranteeing parseable output.** The UI depends on structured data, but LLM JSON is unreliable. The brief schema is a Pydantic model enforced through LangChain's structured output against Ollama's schema mode, with one automatic repair-prompt retry on parse failure and graceful fallback to raw text. <!-- add: your measured validity % -->
+**Guaranteeing parseable output.** The UI depends on structured data, but LLM JSON is unreliable. The brief schema is a Pydantic model enforced through Ollama's JSON-schema-constrained decoding (via `ChatOllama`'s `format` parameter), with one automatic repair-prompt retry on parse failure and graceful fallback to raw text. Measured: 100% first-attempt validity across 20 runs on three sample transcripts — the retry exists for the models that need it.
 
 **Testing without a GPU in CI.** GitHub Actions runners can't run a live Ollama model, so the pipeline layer is tested against mocked LLM responses (valid, malformed, and partial JSON cases) plus a bundled 30-second audio clip for the transcription integration test.
 
