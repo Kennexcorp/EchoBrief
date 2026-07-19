@@ -142,8 +142,28 @@ def cmd_e2e(args: argparse.Namespace) -> None:
     print(f"end-to-end:       {t2 - t0:.1f}s ({_mmss(t2 - t0)})")
 
 
+def cmd_briefs(args: argparse.Namespace) -> None:
+    """One brief per sample transcript — for qualitative review (faithfulness, recall)."""
+    settings = Settings.from_env()
+    if args.model:
+        settings = settings.model_copy(update={"ollama_model": args.model})
+
+    for name, transcript in zip(["short", "medium", "long"], VALIDITY_TRANSCRIPTS, strict=True):
+        engine = create_insight_engine(settings)
+        t0 = perf_counter()
+        result = engine.generate_brief(transcript)
+        elapsed = perf_counter() - t0
+        print(f"\n=== {name} transcript · {settings.ollama_model} · {elapsed:.1f}s ===")
+        if result.brief is not None:
+            print(result.brief.model_dump_json(indent=2))
+        else:
+            print(f"STRUCTURED PARSING FAILED. Raw output:\n{result.raw_text}")
+
+
 def cmd_validity(args: argparse.Namespace) -> None:
     settings = Settings.from_env()
+    if args.model:
+        settings = settings.model_copy(update={"ollama_model": args.model})
     first_attempt_ok = 0
     with_retry_ok = 0
 
@@ -189,7 +209,12 @@ def main() -> None:
 
     p_validity = sub.add_parser("validity", help="structured-output validity over N runs")
     p_validity.add_argument("--runs", type=int, default=20)
+    p_validity.add_argument("--model", help="override OLLAMA_MODEL for model comparison")
     p_validity.set_defaults(func=cmd_validity)
+
+    p_briefs = sub.add_parser("briefs", help="one brief per sample transcript (for eval)")
+    p_briefs.add_argument("--model", help="override OLLAMA_MODEL for model comparison")
+    p_briefs.set_defaults(func=cmd_briefs)
 
     args = parser.parse_args()
     args.func(args)

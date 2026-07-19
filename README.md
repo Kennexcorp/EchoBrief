@@ -1,10 +1,9 @@
 # EchoBrief 🎙️→✅
 
-**Turn recorded supervisor calls into summaries, insights, and tracked next steps — 100% locally.** No cloud APIs, no per-token billing, no audio ever leaving your machine. Built on faster-whisper + Ollama + Streamlit.
+**Turn recorded calls — supervision meetings, coaching sessions, client check-ins, 1:1s — into summaries, insights, and tracked next steps, 100% locally.** No cloud APIs, no per-token billing, no audio ever leaving your machine. Built on faster-whisper + Ollama + Streamlit.
 
-<!-- Badges: fill in your repo path -->
 ![CI](https://github.com/Kennexcorp/echobrief/actions/workflows/ci.yml/badge.svg)
-![Coverage](PLACEHOLDER_COVERAGE_BADGE)
+![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -17,7 +16,7 @@
 
 ## What it does
 
-Students lose the value of mentor and supervisor calls because feedback and action items live inside un-reviewed audio recordings. EchoBrief takes an uploaded call recording (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg` — WhatsApp voice notes work out of the box) and produces:
+Feedback and action items from important calls die inside un-reviewed audio recordings — the student who never re-listens to a supervision meeting, the coach with a week of session recordings, the freelancer with client check-ins. EchoBrief takes an uploaded call recording (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg` — WhatsApp voice notes work out of the box) and produces:
 
 1. **A full transcript** (local Whisper inference — expandable panel)
 2. **A 3–5 sentence summary** of the call
@@ -26,7 +25,7 @@ Students lose the value of mentor and supervisor calls because feedback and acti
 
 Export the whole brief as Markdown and drop it into your notes.
 
-**Why local?** Supervisor calls contain unreleased research, grades, and personal feedback. This pipeline makes zero network calls beyond `localhost` — the privacy guarantee is architectural, not a policy promise.
+**Why local?** These calls carry unreleased research, grades, client confidences, and personal feedback. This pipeline makes zero network calls beyond `localhost` — the privacy guarantee is architectural, not a policy promise.
 
 ---
 
@@ -101,7 +100,7 @@ Measured on an Apple M5 Pro (18-core, 24 GB RAM) with a 27.4-minute call recordi
 | Structured-output validity (first attempt, N=20 runs) | **100 %** |
 | Structured-output validity (with 1 retry) | **100 %** |
 | Unit test coverage (pipeline layer) | **97 %** (CI gate: ≥ 80 %) |
-| Model comparison (llama3.1:8b vs qwen2.5:7b vs mistral:7b) | see [docs/model-eval.md](docs/model-eval.md) |
+| Model comparison (llama3.1:8b vs qwen2.5:7b) | 100 % validity both; qwen +7 pts recall — [docs/model-eval.md](docs/model-eval.md) |
 
 An honest finding: the widely cited "~4× faster than vanilla Whisper" claim (measured on x86 CPUs) did **not** reproduce on Apple Silicon, where PyTorch is well optimized — matched-settings decoding came out at parity. faster-whisper still earns its place on the target hardware for different reasons: INT8 halves memory use, the install is ~1.5 GB lighter (no PyTorch), built-in VAD skips silence, and on commodity x86 laptops — much of the actual student audience — the published speedup applies.
 
@@ -114,8 +113,6 @@ Upload (Streamlit) → faster-whisper (CTranslate2, INT8) → transcript
     → LangChain ChatPromptTemplate → ChatOllama (localhost:11434)
     → Pydantic-validated structured brief → render + Markdown export
 ```
-
-<!-- Optionally paste the full ASCII/Mermaid architecture diagram from docs/DESIGN.md -->
 
 ### Why these choices
 
@@ -132,12 +129,9 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 
 ## Engineering challenges
 
-<!-- Write these in PAST TENSE once solved — this is your STAR "Action" section.
-     Keep each to 3–5 sentences: problem → why it's hard → what you did → measured outcome. -->
-
 **Hour-long transcripts vs. context windows.** A 60-minute call produces a transcript well beyond a 7–8B model's usable context (Ollama defaults to just 2–4k tokens of context — the silent killer). I chunk on Whisper segment boundaries (so no sentence is split mid-thought), extract a structured mini-brief per chunk, then run a final synthesis pass that merges them — classic map-reduce, with one schema enforced end to end. Measured: a 27-minute call yields ~8.1k tokens → 3 chunks; an hour-long call lands around 6–7.
 
-**Making a local model tell the truth.** Small local models happily invent plausible action items. Two guardrails: the system prompt restricts the model to transcript content only, and every action item is rendered with its supporting transcript quote, making hallucinations immediately visible to the user. <!-- add: observed hallucination rate before/after, if measured -->
+**Making a local model tell the truth.** Small local models happily invent plausible action items. Two guardrails: the system prompt restricts the model to transcript content only, and every action item is rendered with its supporting transcript quote, making hallucinations immediately visible to the user.
 
 **Guaranteeing parseable output.** The UI depends on structured data, but LLM JSON is unreliable. The brief schema is a Pydantic model enforced through Ollama's JSON-schema-constrained decoding (via `ChatOllama`'s `format` parameter), with one automatic repair-prompt retry on parse failure and graceful fallback to raw text. Measured: 100% first-attempt validity across 20 runs on three sample transcripts — the retry exists for the models that need it.
 
