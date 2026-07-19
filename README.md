@@ -183,7 +183,7 @@ app/            Streamlit UI
 core/           transcription.py · insights.py · prompts.py · schemas.py
 tests/          unit + integration (mocked LLM)
 docs/           DESIGN.md (full planning doc) · model-eval.md · demo.gif
-CHANGELOG.md, cliff.toml, pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
+CONTRIBUTING.md, CHANGELOG.md, cliff.toml, pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
 ```
 
 ## Releasing
@@ -201,6 +201,12 @@ git push origin vX.Y.Z
 
 The workflow fails fast if the tag and `pyproject.toml` version disagree.
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and contributor terms.
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+EchoBrief is released under the MIT License — see [LICENSE](LICENSE). You're free to use, modify, and distribute it.
+
+The copyright holder retains all rights not granted by that license, including the right to offer the software under different or commercial terms. Future versions may be released under a different license; any change applies only going forward and never revokes the MIT grant on previously published releases.
