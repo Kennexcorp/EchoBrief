@@ -12,7 +12,8 @@ import streamlit as st
 from core import health, insights, transcription
 from core.config import Settings
 from core.export import export_markdown
-from core.schemas import InsightResult, Transcript
+from core.schemas import Brief, InsightResult, Transcript
+from core.speech import SpeechError, create_speech_client, synthesize_brief
 
 ACCEPTED_TYPES = ["mp3", "wav", "m4a", "opus", "ogg"]
 
@@ -64,9 +65,10 @@ def main() -> None:
             progress.update(label="Done", state="complete", expanded=False)
         st.session_state["transcript"] = transcript
         st.session_state["result"] = result
+        st.session_state.pop("audio", None)  # a new brief invalidates any earlier audio
 
     if "result" in st.session_state:
-        _render_result(st.session_state["result"], st.session_state["transcript"])
+        _render_result(st.session_state["result"], st.session_state["transcript"], settings)
 
 
 def _transcribe_upload(uploaded, settings: Settings) -> Transcript:
@@ -89,7 +91,7 @@ def _cached_transcription_service(model_size: str, compute_type: str):
     )
 
 
-def _render_result(result: InsightResult, transcript: Transcript) -> None:
+def _render_result(result: InsightResult, transcript: Transcript, settings: Settings) -> None:
     if result.succeeded and result.brief is not None:
         brief = result.brief
         st.subheader("Summary")
@@ -122,6 +124,31 @@ def _render_result(result: InsightResult, transcript: Transcript) -> None:
         file_name="echobrief.md",
         mime="text/markdown",
     )
+
+    if result.succeeded and result.brief is not None:
+        _render_voice(result.brief, settings)
+
+
+def _render_voice(brief: Brief, settings: Settings) -> None:
+    """Opt-in ElevenLabs voice output: closes the loop from speech in to speech out."""
+    st.subheader("Listen")
+    if not settings.tts_enabled:
+        st.caption(
+            "Set ELEVENLABS_API_KEY in your .env to read the brief aloud "
+            "(optional, via ElevenLabs)."
+        )
+        return
+
+    if st.button("🔊 Read the brief aloud"):
+        try:
+            with st.spinner("Synthesizing audio with ElevenLabs..."):
+                st.session_state["audio"] = synthesize_brief(brief, create_speech_client(settings))
+        except SpeechError as exc:
+            st.error(str(exc))
+
+    if st.session_state.get("audio"):
+        st.audio(st.session_state["audio"], format="audio/mpeg")
+        st.caption("Voiced by ElevenLabs")
 
 
 main()

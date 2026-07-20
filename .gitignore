@@ -24,3 +24,7 @@ coverage.xml
 # Local agent tooling
 .agents/
 .claude/
+
+# Generated brief / audio output from local --speak runs (repo root only)
+/brief.md
+/brief.mp3

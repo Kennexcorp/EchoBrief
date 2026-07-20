@@ -1,6 +1,6 @@
 # EchoBrief 🎙️→✅
 
-**Turn recorded calls — supervision meetings, coaching sessions, client check-ins, 1:1s — into summaries, insights, and tracked next steps, 100% locally.** No cloud APIs, no per-token billing, no audio ever leaving your machine. Built on faster-whisper + Ollama + Streamlit.
+**Turn recorded calls — supervision meetings, coaching sessions, client check-ins, 1:1s — into summaries, insights, and tracked next steps, 100% locally by default.** The core pipeline uses no cloud APIs, no per-token billing, and no audio ever leaves your machine. (Optional spoken-audio output via ElevenLabs is the one opt-in exception, off unless you set an API key.) Built on faster-whisper + Ollama + Streamlit.
 
 ![CI](https://github.com/Kennexcorp/echobrief/actions/workflows/ci.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
@@ -26,7 +26,7 @@ Feedback and action items from important calls die inside un-reviewed audio reco
 
 Export the whole brief as Markdown and drop it into your notes.
 
-**Why local?** These calls carry unreleased research, grades, client confidences, and personal feedback. This pipeline makes zero network calls beyond `localhost` — the privacy guarantee is architectural, not a policy promise.
+**Why local?** These calls carry unreleased research, grades, client confidences, and personal feedback. By default this pipeline makes zero network calls beyond `localhost` — the privacy guarantee is architectural, not a policy promise. The only feature that reaches the network is the opt-in ElevenLabs voice output, which stays off unless you set an API key.
 
 ---
 
@@ -88,9 +88,15 @@ uv run echobrief call.opus --context "thesis review" -o brief.md
 | `audio` | yes | Path to the recording (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg`) |
 | `--context` | no | One line of context that sharpens the brief, e.g. `"thesis progress review"` |
 | `--output`, `-o` | no | Write the brief to this file instead of stdout |
+| `--speak` | no | Also read the brief aloud, saving an MP3 to this path (opt-in; needs `ELEVENLABS_API_KEY`) |
 | `--help`, `-h` | no | Show usage and exit |
 
 Progress goes to stderr, the Markdown brief to stdout (or `--output` file), so `uv run echobrief call.mp3 > brief.md` works too.
+
+```bash
+# Opt-in voice output: closes the loop from speech in (Whisper) to speech out (ElevenLabs)
+uv run echobrief call.mp3 -o brief.md --speak brief.mp3
+```
 
 ### Configuration
 
@@ -102,6 +108,13 @@ Copy `.env.example` → `.env`:
 | `OLLAMA_MODEL` | `llama3.1:8b` | any locally pulled chat model |
 | `WHISPER_MODEL_SIZE` | `small` | `base` for low-RAM machines, `medium`+ for GPU |
 | `WHISPER_COMPUTE_TYPE` | `int8` | `float16` on GPU |
+| `ELEVENLABS_API_KEY` | _(unset)_ | Set to enable opt-in voice output. Unset keeps EchoBrief fully local |
+| `ELEVENLABS_VOICE_ID` | `21m00Tcm4TlvDq8ikWAM` | Any ElevenLabs voice ID |
+| `ELEVENLABS_MODEL` | `eleven_multilingual_v2` | ElevenLabs TTS model |
+
+### Optional voice output
+
+EchoBrief already *starts* with speech (Whisper transcription); `--speak` closes the loop by reading the finished brief back as audio through [ElevenLabs](https://elevenlabs.io) text-to-speech. It is entirely opt-in: with no `ELEVENLABS_API_KEY` set, EchoBrief stays 100% local and this feature is dormant. The free tier is enough to try it. When using the free tier, credit "Voiced by ElevenLabs" as their terms require.
 
 ---
 

@@ -7,6 +7,7 @@ import pytest
 from core.cli import main
 from core.health import HealthStatus
 from core.schemas import Brief, InsightResult, Transcript, TranscriptSegment
+from core.speech import SpeechError
 
 TRANSCRIPT = Transcript(
     segments=[TranscriptSegment(text="Send the chapter by Friday.", start=0.0, end=2.0)]
@@ -103,6 +104,55 @@ class TestHappyPath:
 
         assert code == 0
         assert engine.received_context == "thesis review"
+
+
+class FakeSpeechClient:
+    def synthesize(self, text: str) -> bytes:
+        return b"fake-mp3-bytes"
+
+
+class TestSpeak:
+    def test_speak_flag_writes_mp3(
+        self, audio_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        mp3 = tmp_path / "brief.mp3"
+
+        code = run_cli(
+            [str(audio_file), "--speak", str(mp3)],
+            speech_factory=lambda settings: FakeSpeechClient(),
+        )
+
+        assert code == 0
+        assert mp3.read_bytes() == b"fake-mp3-bytes"
+        assert "Spoken brief written" in capsys.readouterr().err
+
+    def test_speak_skipped_when_no_structured_brief(
+        self, audio_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        fallback = InsightResult(brief=None, raw_text="raw model text")
+
+        code = run_cli(
+            [str(audio_file), "--speak", str(tmp_path / "brief.mp3")],
+            engine_factory=lambda settings: FakeEngine(result=fallback),
+            speech_factory=lambda settings: FakeSpeechClient(),
+        )
+
+        assert code == 1
+        assert "Skipping audio" in capsys.readouterr().err
+
+    def test_speak_reports_speech_error(
+        self, audio_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        def failing_factory(settings):
+            raise SpeechError("Voice output is off. Set ELEVENLABS_API_KEY in your .env.")
+
+        code = run_cli(
+            [str(audio_file), "--speak", str(tmp_path / "brief.mp3")],
+            speech_factory=failing_factory,
+        )
+
+        assert code == 1
+        assert "ELEVENLABS_API_KEY" in capsys.readouterr().err
 
 
 class TestBadInput:

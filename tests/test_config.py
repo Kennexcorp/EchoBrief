@@ -38,11 +38,28 @@ class TestEnvOverrides:
         assert settings.ollama_model == "llama3.1:8b"
 
     def test_defaults_to_process_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("core.config.load_dotenv", lambda: None)
         monkeypatch.setenv("OLLAMA_MODEL", "mistral:7b")
 
         settings = Settings.from_env()
 
         assert settings.ollama_model == "mistral:7b"
+
+
+class TestDotenvLoading:
+    def test_loads_dotenv_only_for_the_real_environment(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls = {"n": 0}
+        monkeypatch.setattr(
+            "core.config.load_dotenv", lambda: calls.__setitem__("n", calls["n"] + 1)
+        )
+
+        Settings.from_env({})  # explicit mapping: must NOT touch .env
+        assert calls["n"] == 0
+
+        Settings.from_env()  # real environment: loads .env
+        assert calls["n"] == 1
 
 
 class TestValidation:

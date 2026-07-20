@@ -11,12 +11,26 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from core.health import HealthStatus
+from core.schemas import Brief, InsightResult, Transcript, TranscriptSegment
 
 APP_PATH = str(Path(__file__).parent.parent / "app" / "main.py")
+
+TRANSCRIPT = Transcript(
+    segments=[TranscriptSegment(text="Send the chapter by Friday.", start=0.0, end=2.0)]
+)
+RESULT = InsightResult(
+    brief=Brief(
+        summary="The supervisor requested a revised chapter.",
+        key_insights=["Deadline discipline matters."],
+        action_items=[],
+    )
+)
 
 
 @pytest.fixture
 def healthy_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Stub .env loading so tests never pick up a developer's real key.
+    monkeypatch.setattr("core.config.load_dotenv", lambda: None)
     monkeypatch.setattr(
         "core.health.check_ollama",
         lambda settings, **kwargs: HealthStatus(ok=True, message="ok"),
@@ -39,6 +53,35 @@ class TestHealthyApp:
 
         assert at.selectbox[0].options == ["llama3.1:8b", "qwen2.5:7b"]
         assert at.selectbox[0].value == "llama3.1:8b"  # configured default pre-selected
+
+
+class TestVoiceOutput:
+    def _run_with_brief(self) -> AppTest:
+        at = AppTest.from_file(APP_PATH)
+        at.session_state["result"] = RESULT
+        at.session_state["transcript"] = TRANSCRIPT
+        return at.run(timeout=15)
+
+    def test_read_aloud_button_shown_when_key_set(
+        self, healthy_ollama: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "sk-test")
+
+        at = self._run_with_brief()
+
+        assert not at.exception
+        assert any("Read the brief aloud" in button.label for button in at.button)
+
+    def test_hint_shown_and_no_button_without_key(
+        self, healthy_ollama: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+
+        at = self._run_with_brief()
+
+        assert not at.exception
+        assert not any("Read the brief aloud" in button.label for button in at.button)
+        assert any("ELEVENLABS_API_KEY" in caption.value for caption in at.caption)
 
 
 class TestUnhealthyApp:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, field_validator
 
 _ENV_FIELDS = {
@@ -16,6 +17,9 @@ _ENV_FIELDS = {
     "OLLAMA_MODEL": "ollama_model",
     "WHISPER_MODEL_SIZE": "whisper_model_size",
     "WHISPER_COMPUTE_TYPE": "whisper_compute_type",
+    "ELEVENLABS_API_KEY": "elevenlabs_api_key",
+    "ELEVENLABS_VOICE_ID": "elevenlabs_voice_id",
+    "ELEVENLABS_MODEL": "elevenlabs_model",
 }
 
 
@@ -27,6 +31,12 @@ class Settings(BaseModel):
     whisper_model_size: str = "small"
     whisper_compute_type: str = "int8"
 
+    # Optional ElevenLabs voice output (F6). Off unless an API key is set, so the
+    # default pipeline stays 100% local; audio is the only feature that leaves the machine.
+    elevenlabs_api_key: str = ""
+    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # "Rachel", a default public voice
+    elevenlabs_model: str = "eleven_multilingual_v2"
+
     @field_validator("ollama_model", "whisper_model_size", "whisper_compute_type")
     @classmethod
     def _reject_blank(cls, value: str) -> str:
@@ -34,6 +44,16 @@ class Settings(BaseModel):
         if not value:
             raise ValueError("must not be blank")
         return value
+
+    @field_validator("elevenlabs_api_key", "elevenlabs_voice_id", "elevenlabs_model")
+    @classmethod
+    def _strip(cls, value: str) -> str:
+        return value.strip()
+
+    @property
+    def tts_enabled(self) -> bool:
+        """Voice output is on only when an ElevenLabs API key is configured."""
+        return bool(self.elevenlabs_api_key)
 
     @field_validator("ollama_base_url")
     @classmethod
@@ -45,8 +65,17 @@ class Settings(BaseModel):
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
-        """Build settings from an environment mapping (default: ``os.environ``)."""
-        source = os.environ if env is None else env
+        """Build settings from an environment mapping (default: ``os.environ``).
+
+        When reading the real process environment, a local ``.env`` file is
+        loaded first. It is a no-op if none exists, and real environment
+        variables always win, so Docker/CI setups are unaffected.
+        """
+        if env is None:
+            load_dotenv()
+            source: Mapping[str, str] = os.environ
+        else:
+            source = env
         present = {
             field: source[var] for var, field in _ENV_FIELDS.items() if source.get(var) is not None
         }

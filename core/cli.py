@@ -15,6 +15,7 @@ from core.config import Settings
 from core.export import export_markdown
 from core.health import HealthStatus, check_ollama
 from core.insights import InsightEngine, create_insight_engine
+from core.speech import SpeechClient, SpeechError, create_speech_client, synthesize_brief
 from core.transcription import TranscriptionService, create_transcription_service
 
 
@@ -26,6 +27,7 @@ def main(
         create_transcription_service
     ),
     engine_factory: Callable[[Settings], InsightEngine] = create_insight_engine,
+    speech_factory: Callable[[Settings], SpeechClient] = create_speech_client,
 ) -> int:
     parser = argparse.ArgumentParser(
         prog="echobrief",
@@ -34,6 +36,12 @@ def main(
     parser.add_argument("audio", help="path to the recording (.mp3, .wav, .m4a)")
     parser.add_argument("--context", help="optional context, e.g. 'thesis progress review'")
     parser.add_argument("--output", "-o", help="write the brief to this file instead of stdout")
+    parser.add_argument(
+        "--speak",
+        metavar="MP3_PATH",
+        help="also read the brief aloud, saving spoken audio to this MP3 "
+        "(opt-in; needs ELEVENLABS_API_KEY, the only feature that leaves the machine)",
+    )
     args = parser.parse_args(argv)
 
     settings = Settings.from_env()
@@ -69,6 +77,22 @@ def main(
         print(f"Brief written to {args.output}", file=sys.stderr)
     else:
         print(markdown)
+
+    if args.speak:
+        if result.brief is None:
+            print(
+                "Skipping audio: no structured brief to read aloud (structured parsing failed).",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            audio = synthesize_brief(result.brief, speech_factory(settings))
+        except SpeechError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        Path(args.speak).write_bytes(audio)
+        print(f"Spoken brief written to {args.speak}", file=sys.stderr)
+
     return 0
 
 
