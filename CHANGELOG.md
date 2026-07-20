@@ -3,11 +3,30 @@
 All notable changes to EchoBrief are documented here.
 This file is generated from [conventional commits](https://www.conventionalcommits.org) by [git-cliff](https://git-cliff.org).
 
+## [0.2.0] - 2026-07-20
+
+### Documentation
+
+- Add demo gif
+- Add docker pull quickstart as recommended try-it path
+- Add contributor terms and license/relicensing note
+
+### Features
+
+- Add optional ElevenLabs voice output
+
+### Other
+
+- Remove em dashes from streamlit ui strings
 ## [0.1.1] - 2026-07-19
 
 ### CI/CD
 
 - Build multi-arch image for amd64 and arm64
+
+### Chores
+
+- Bump version to 0.1.1 and update changelog
 
 ### Documentation
 
