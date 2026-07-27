@@ -31,7 +31,7 @@ class Settings(BaseModel):
     whisper_model_size: str = "small"
     whisper_compute_type: str = "int8"
 
-    # Optional ElevenLabs voice output (F6). Off unless an API key is set, so the
+    # Optional ElevenLabs voice output (F8). Off unless an API key is set, so the
     # default pipeline stays 100% local; audio is the only feature that leaves the machine.
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # "Rachel", a default public voice

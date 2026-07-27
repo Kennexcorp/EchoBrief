@@ -1,4 +1,4 @@
-"""Optional spoken-audio output for a brief (F6), via the ElevenLabs API.
+"""Optional spoken-audio output for a brief (F8), via the ElevenLabs API.
 
 This is the one feature that leaves the machine. It stays off unless an
 ``ELEVENLABS_API_KEY`` is set, so the default pipeline remains 100% local. The
