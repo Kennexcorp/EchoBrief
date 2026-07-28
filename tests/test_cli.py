@@ -57,6 +57,8 @@ def run_cli(argv: list[str], **overrides) -> int:
         "health_check": healthy,
         "transcription_factory": lambda settings: FakeTranscriptionService(),
         "engine_factory": lambda settings: FakeEngine(),
+        # Stubbed by default: the real one would load pyannote and hit Hugging Face.
+        "diarize": lambda transcript, path, settings: (transcript, None),
     }
     defaults.update(overrides)
     return main(argv, **defaults)
@@ -180,28 +182,39 @@ class TestBadInput:
         assert "parsing failed" in captured.err.lower()
 
 
-def test_cli_labels_the_transcript_and_stays_silent_on_success(
-    capsys, audio_file: Path, monkeypatch
-) -> None:
-    monkeypatch.setattr(
-        "core.cli.apply_diarization",
-        lambda transcript, path, settings: (transcript, None),
-    )
-    exit_code = run_cli([str(audio_file)])
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "diarization" not in captured.err.lower()
+class TestDiarization:
+    def test_labels_the_transcript_and_stays_silent_on_success(
+        self, capsys: pytest.CaptureFixture[str], audio_file: Path
+    ) -> None:
+        exit_code = run_cli(
+            [str(audio_file)],
+            diarize=lambda transcript, path, settings: (transcript, None),
+        )
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "diarization" not in captured.err.lower()
 
+    def test_warns_on_stderr_but_still_produces_a_brief(
+        self, capsys: pytest.CaptureFixture[str], audio_file: Path
+    ) -> None:
+        exit_code = run_cli(
+            [str(audio_file)],
+            diarize=lambda transcript, path, settings: (
+                transcript,
+                "Install: uv sync --extra diarization",
+            ),
+        )
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "uv sync --extra diarization" in captured.err
+        assert "# EchoBrief" in captured.out
 
-def test_cli_warns_on_stderr_but_still_produces_a_brief(
-    capsys, audio_file: Path, monkeypatch
-) -> None:
-    monkeypatch.setattr(
-        "core.cli.apply_diarization",
-        lambda transcript, path, settings: (transcript, "Install: uv sync --extra diarization"),
-    )
-    exit_code = run_cli([str(audio_file)])
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "uv sync --extra diarization" in captured.err
-    assert "# EchoBrief" in captured.out
+    def test_receives_the_audio_path_the_cli_was_given(self, audio_file: Path) -> None:
+        seen: list[Path] = []
+
+        def record(transcript, path, settings):
+            seen.append(path)
+            return transcript, None
+
+        assert run_cli([str(audio_file)], diarize=record) == 0
+        assert seen == [audio_file]

@@ -16,6 +16,7 @@ from core.diarization import apply_diarization
 from core.export import export_markdown
 from core.health import HealthStatus, check_ollama
 from core.insights import InsightEngine, create_insight_engine
+from core.schemas import Transcript
 from core.speech import SpeechClient, SpeechError, create_speech_client, synthesize_brief
 from core.transcription import TranscriptionService, create_transcription_service
 
@@ -29,6 +30,9 @@ def main(
     ),
     engine_factory: Callable[[Settings], InsightEngine] = create_insight_engine,
     speech_factory: Callable[[Settings], SpeechClient] = create_speech_client,
+    diarize: Callable[
+        [Transcript, Path, Settings], tuple[Transcript, str | None]
+    ] = apply_diarization,
 ) -> int:
     parser = argparse.ArgumentParser(
         prog="echobrief",
@@ -59,7 +63,7 @@ def main(
 
     print("Transcribing (this can take a while on CPU)...", file=sys.stderr)
     transcript = transcription_factory(settings).transcribe(audio_path)
-    transcript, diarization_warning = apply_diarization(transcript, audio_path, settings)
+    transcript, diarization_warning = diarize(transcript, audio_path, settings)
     if diarization_warning:
         print(diarization_warning, file=sys.stderr)
 
