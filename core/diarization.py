@@ -5,9 +5,10 @@ outputs are joined here by timestamp overlap. The merge is a pure function,
 which keeps the interesting logic testable without audio, a GPU, or a token.
 """
 
+from core.schemas import Transcript
 from pathlib import Path
 from typing import Any, NamedTuple, Protocol
-
+from collections.abc import Callable
 from core.config import Settings
 from core.schemas import TranscriptSegment
 
@@ -127,3 +128,25 @@ def create_diarization_service(settings: Settings) -> DiarizationService:
         ) from exc
 
     return DiarizationService(pipeline)
+
+def apply_diarization(
+    transcript: Transcript,
+    audio_path: Path | str,
+    settings: Settings,
+    *,
+    service_factory: Callable[[Settings], DiarizationService] = create_diarization_service,
+) -> tuple[Transcript, str | None]:
+    """Label a transcript by speaker, degrading to the original on any failure.
+
+    Returns the transcript (labelled when diarization succeeded, untouched
+    otherwise) and a warning message to surface when it did not. Never raises:
+    diarization is an enhancement, never a dependency of the main path.
+    """
+    try:
+        turns = service_factory(settings).diarize(audio_path)
+    except DiarizationError as exc:
+        return transcript, str(exc)
+    except Exception as exc:  # noqa: BLE001 - any pyannote failure must degrade, not crash
+        return transcript, f"Speaker diarization failed, continuing without labels: {exc}"
+
+    return Transcript(segments=assign_speakers(transcript.segments, turns)), None

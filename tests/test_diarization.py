@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-
+from core.diarization import apply_diarization
+from core.schemas import Transcript
 from core.config import Settings
 from core.diarization import (
     DiarizationError,
@@ -140,3 +141,54 @@ class TestCreateDiarizationService:
         message = str(exc_info.value)
         assert "HUGGINGFACE_TOKEN" in message
         assert "pyannote/speaker-diarization-community-1" in message
+
+
+def transcript_of(*segments: TranscriptSegment) -> Transcript:
+    return Transcript(segments=list(segments))
+
+
+class TestApplyDiarization:
+    def test_labels_the_transcript_when_everything_works(self, audio_file: Path) -> None:
+        pipeline = FakePipeline([(0.0, 2.0, "SPEAKER_00"), (2.0, 4.0, "SPEAKER_01")])
+        transcript = transcript_of(segment(0.0, 2.0, "Hi."), segment(2.0, 4.0, "Hello."))
+
+        labelled, warning = apply_diarization(
+            transcript,
+            audio_file,
+            Settings(huggingface_token="hf_abc"),
+            service_factory=lambda _settings: DiarizationService(pipeline),
+        )
+
+        assert warning is None
+        assert [item.speaker for item in labelled.segments] == ["Speaker 1", "Speaker 2"]
+
+    def test_returns_transcript_unchanged_with_a_warning_when_unavailable(
+        self, audio_file: Path
+    ) -> None:
+        transcript = transcript_of(segment(0.0, 2.0, "Hi."))
+
+        def unavailable(_settings: Settings) -> DiarizationService:
+            raise DiarizationError("Install it with: uv sync --extra diarization")
+
+        result, warning = apply_diarization(
+            transcript, audio_file, Settings(), service_factory=unavailable
+        )
+
+        assert result is transcript
+        assert warning is not None
+        assert "uv sync --extra diarization" in warning
+
+    def test_unexpected_failure_degrades_instead_of_raising(self, audio_file: Path) -> None:
+        transcript = transcript_of(segment(0.0, 2.0, "Hi."))
+
+        def exploding(_settings: Settings) -> DiarizationService:
+            raise RuntimeError("CUDA out of memory")
+
+        result, warning = apply_diarization(
+            transcript, audio_file, Settings(huggingface_token="hf_abc"),
+            service_factory=exploding,
+        )
+
+        assert result is transcript
+        assert warning is not None
+        assert "CUDA out of memory" in warning
