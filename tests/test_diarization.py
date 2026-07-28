@@ -6,17 +6,17 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from core.diarization import apply_diarization
-from core.schemas import Transcript
+
 from core.config import Settings
 from core.diarization import (
     DiarizationError,
     DiarizationService,
     SpeakerTurn,
+    apply_diarization,
     assign_speakers,
     create_diarization_service,
 )
-from core.schemas import TranscriptSegment
+from core.schemas import Transcript, TranscriptSegment
 
 
 def segment(start: float, end: float, text: str = "hello") -> TranscriptSegment:
@@ -185,7 +185,9 @@ class TestApplyDiarization:
             raise RuntimeError("CUDA out of memory")
 
         result, warning = apply_diarization(
-            transcript, audio_file, Settings(huggingface_token="hf_abc"),
+            transcript,
+            audio_file,
+            Settings(huggingface_token="hf_abc"),
             service_factory=exploding,
         )
 

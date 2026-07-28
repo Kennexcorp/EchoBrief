@@ -5,12 +5,12 @@ outputs are joined here by timestamp overlap. The merge is a pure function,
 which keeps the interesting logic testable without audio, a GPU, or a token.
 """
 
-from core.schemas import Transcript
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NamedTuple, Protocol
-from collections.abc import Callable
+
 from core.config import Settings
-from core.schemas import TranscriptSegment
+from core.schemas import Transcript, TranscriptSegment
 
 
 class SpeakerTurn(NamedTuple):
@@ -128,6 +128,7 @@ def create_diarization_service(settings: Settings) -> DiarizationService:
         ) from exc
 
     return DiarizationService(pipeline)
+
 
 def apply_diarization(
     transcript: Transcript,

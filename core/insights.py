@@ -7,6 +7,7 @@ the caller gets the raw model text instead of an exception (reliability NFR).
 from __future__ import annotations
 
 from typing import Any, Protocol
+
 from langchain_core.messages import BaseMessage
 from langchain_ollama import ChatOllama
 from pydantic import ValidationError

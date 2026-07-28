@@ -796,7 +796,7 @@ Replace line 56:
 Run: `uv run pytest tests/test_insights.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Request approval, then commit**
+- [X] **Step 5: Request approval, then commit**
 
 ```bash
 git add core/insights.py tests/test_insights.py
@@ -817,7 +817,7 @@ git commit -m "fix: keep speaker labels in the chunked map step"
 - Consumes: nothing
 - Produces: nothing new. `_CHUNK_SYSTEM` and `_SYNTHESIS_SYSTEM` both concatenate `_SYSTEM`, so this single edit covers the map and reduce paths too.
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 ```python
 # tests/test_prompts.py (append)
@@ -835,12 +835,12 @@ def test_chunk_and_synthesis_prompts_inherit_the_speaker_instruction() -> None:
     assert "Speaker 1" in synthesis_system
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [X] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_prompts.py -v`
 Expected: FAIL on the `"Speaker 1" in system` assertion
 
-- [ ] **Step 3: Write the implementation**
+- [X] **Step 3: Write the implementation**
 
 In `core/prompts.py`, add one bullet to the `Rules:` block in `_SYSTEM`, after the "Every action item MUST include its supporting verbatim quote" line:
 
@@ -850,12 +850,12 @@ When it does, use those labels to set each action item's "owner" instead of \
 inferring ownership from phrasing.
 ```
 
-- [ ] **Step 4: Run the tests**
+- [X] **Step 4: Run the tests**
 
 Run: `uv run pytest tests/test_prompts.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Request approval, then commit**
+- [X] **Step 5: Request approval, then commit**
 
 ```bash
 git add core/prompts.py tests/test_prompts.py
@@ -879,7 +879,7 @@ Both entry points call `apply_diarization` and surface the warning. No toggle is
 - Consumes: `apply_diarization` from Task 5
 - Produces: nothing new
 
-- [ ] **Step 1: Write the failing tests**
+- [X] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_cli.py (append)
@@ -912,7 +912,7 @@ def test_cli_warns_on_stderr_but_still_produces_a_brief(
 
 `run_cli` (`tests/test_cli.py:55`) already injects stub `health_check`, `transcription_factory`, and `engine_factory` defaults, and the `audio_file` fixture already exists at `:48`. No test-helper changes needed.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [X] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_cli.py -v`
 Expected: FAIL with `AttributeError: module 'core.cli' has no attribute 'apply_diarization'`
@@ -945,7 +945,7 @@ In `app/main.py`, add `diarization` to the `from core import ...` line, and insi
 
 `_transcribe_upload` currently deletes the temp file when its `with` block exits, so it must return the path alongside the transcript for diarization to read the same audio. Change its signature to return `tuple[Transcript, Path]` and move the diarization call inside the `NamedTemporaryFile` context, keeping the privacy guarantee that uploaded audio never outlives the run.
 
-- [ ] **Step 4: Run the full suite**
+- [X] **Step 4: Run the full suite**
 
 Run: `uv run pytest && uv run ruff check . && uv run ruff format --check .`
 Expected: all pass

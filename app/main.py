@@ -9,7 +9,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from core import health, insights, transcription
+from core import diarization, health, insights, transcription
 from core.config import Settings
 from core.export import export_markdown
 from core.schemas import Brief, InsightResult, Transcript
@@ -54,7 +54,9 @@ def main() -> None:
     if uploaded is not None and st.button("Generate brief", type="primary"):
         with st.status("Processing...", expanded=True) as progress:
             st.write("Transcribing locally. This can take a while on CPU...")
-            transcript = _transcribe_upload(uploaded, settings)
+            transcript, diarization_warning = _transcribe_upload(uploaded, settings)
+            if diarization_warning:
+                st.warning(diarization_warning)
             st.write(
                 f"Transcribed {len(transcript.segments)} segments. "
                 f"Generating brief with {settings.ollama_model}..."
@@ -71,7 +73,12 @@ def main() -> None:
         _render_result(st.session_state["result"], st.session_state["transcript"], settings)
 
 
-def _transcribe_upload(uploaded, settings: Settings) -> Transcript:
+def _transcribe_upload(uploaded, settings: Settings) -> tuple[Transcript, str | None]:
+    """Transcribe and speaker-label an upload, returning any diarization warning.
+
+    Both steps read the same temp file, so they must share its scope: the file
+    is deleted as soon as the context exits.
+    """
     service = _cached_transcription_service(
         settings.whisper_model_size, settings.whisper_compute_type
     )
@@ -80,7 +87,8 @@ def _transcribe_upload(uploaded, settings: Settings) -> Transcript:
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
         tmp.write(uploaded.getbuffer())
         tmp.flush()
-        return service.transcribe(tmp.name)
+        transcript = service.transcribe(tmp.name)
+        return diarization.apply_diarization(transcript, tmp.name, settings)
 
 
 @st.cache_resource

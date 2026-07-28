@@ -98,6 +98,7 @@ class TestRepairMessages:
         assert "invalid JSON" in messages[-1].content
         assert "json" in messages[-1].content.lower()
 
+
 def test_system_prompt_instructs_the_model_to_use_speaker_labels() -> None:
     messages = build_brief_messages("Speaker 1: Send it by Friday.")
     system = str(messages[0].content)

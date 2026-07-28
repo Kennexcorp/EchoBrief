@@ -12,6 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from core.config import Settings
+from core.diarization import apply_diarization
 from core.export import export_markdown
 from core.health import HealthStatus, check_ollama
 from core.insights import InsightEngine, create_insight_engine
@@ -58,6 +59,9 @@ def main(
 
     print("Transcribing (this can take a while on CPU)...", file=sys.stderr)
     transcript = transcription_factory(settings).transcribe(audio_path)
+    transcript, diarization_warning = apply_diarization(transcript, audio_path, settings)
+    if diarization_warning:
+        print(diarization_warning, file=sys.stderr)
 
     print(
         f"Transcribed {len(transcript.segments)} segments. "

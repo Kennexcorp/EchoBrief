@@ -165,11 +165,14 @@ class TestFallback:
 
         assert not result.succeeded
 
+
 def test_chunked_path_sends_speaker_labels_to_the_model() -> None:
     """A long labelled transcript must not lose its labels in the map step."""
     segments = [
         TranscriptSegment(
-            text="word " * 400, start=float(i * 10), end=float(i * 10 + 10),
+            text="word " * 400,
+            start=float(i * 10),
+            end=float(i * 10 + 10),
             speaker="Speaker 1" if i % 2 == 0 else "Speaker 2",
         )
         for i in range(8)

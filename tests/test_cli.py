@@ -178,3 +178,30 @@ class TestBadInput:
         assert code == 0
         assert "raw model text" in captured.out
         assert "parsing failed" in captured.err.lower()
+
+
+def test_cli_labels_the_transcript_and_stays_silent_on_success(
+    capsys, audio_file: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        "core.cli.apply_diarization",
+        lambda transcript, path, settings: (transcript, None),
+    )
+    exit_code = run_cli([str(audio_file)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "diarization" not in captured.err.lower()
+
+
+def test_cli_warns_on_stderr_but_still_produces_a_brief(
+    capsys, audio_file: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        "core.cli.apply_diarization",
+        lambda transcript, path, settings: (transcript, "Install: uv sync --extra diarization"),
+    )
+    exit_code = run_cli([str(audio_file)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "uv sync --extra diarization" in captured.err
+    assert "# EchoBrief" in captured.out
