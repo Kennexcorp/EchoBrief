@@ -772,7 +772,7 @@ def test_chunked_path_sends_speaker_labels_to_the_model() -> None:
 
 `FakeChatModel` (`tests/test_insights.py:30`) and `VALID_BRIEF_JSON` (`:11`) already exist, and the fake already records every invocation in `self.calls`. No test-helper changes needed.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `uv run pytest tests/test_insights.py::test_chunked_path_sends_speaker_labels_to_the_model -v`
 Expected: FAIL, because the chunk join drops labels

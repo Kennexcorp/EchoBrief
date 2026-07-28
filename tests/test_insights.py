@@ -164,3 +164,23 @@ class TestFallback:
         result = InsightEngine(model).generate_brief("transcript")
 
         assert not result.succeeded
+
+def test_chunked_path_sends_speaker_labels_to_the_model() -> None:
+    """A long labelled transcript must not lose its labels in the map step."""
+    segments = [
+        TranscriptSegment(
+            text="word " * 400, start=float(i * 10), end=float(i * 10 + 10),
+            speaker="Speaker 1" if i % 2 == 0 else "Speaker 2",
+        )
+        for i in range(8)
+    ]
+    chat_model = FakeChatModel(responses=[VALID_BRIEF_JSON] * 12)
+    engine = InsightEngine(chat_model, max_chunk_tokens=1000)
+
+    engine.generate_brief(Transcript(segments=segments))
+
+    chunk_prompts = "".join(
+        str(message.content) for messages in chat_model.calls for message in messages
+    )
+    assert "Speaker 1:" in chunk_prompts
+    assert "Speaker 2:" in chunk_prompts

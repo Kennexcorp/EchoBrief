@@ -7,7 +7,6 @@ the caller gets the raw model text instead of an exception (reliability NFR).
 from __future__ import annotations
 
 from typing import Any, Protocol
-
 from langchain_core.messages import BaseMessage
 from langchain_ollama import ChatOllama
 from pydantic import ValidationError
@@ -20,7 +19,7 @@ from core.prompts import (
     build_repair_messages,
     build_synthesis_messages,
 )
-from core.schemas import Brief, InsightResult, Transcript
+from core.schemas import Brief, InsightResult, Transcript, render_segments
 
 
 class ChatModel(Protocol):
@@ -53,7 +52,7 @@ class InsightEngine:
         chunks = chunk_segments(transcript.segments, self._max_chunk_tokens)
         part_notes = []
         for part, chunk in enumerate(chunks, start=1):
-            chunk_text = " ".join(segment.text for segment in chunk)
+            chunk_text = render_segments(chunk)
             chunk_result = self._run(build_chunk_brief_messages(chunk_text, part, len(chunks)))
             # A failed chunk still contributes its raw text — synthesis can read prose.
             part_notes.append(
