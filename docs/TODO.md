@@ -160,7 +160,7 @@ Replace the `Transcript.text` property:
 Run: `uv run pytest && uv run ruff check . && uv run ruff format --check .`
 Expected: all pass. The existing `export.py` and `insights.py` tests must still pass untouched, which proves the no-labels path is unchanged.
 
-- [ ] **Step 5: Request approval, then commit**
+- [X] **Step 5: Request approval, then commit**
 
 ```bash
 git add core/schemas.py tests/test_schemas.py
@@ -181,7 +181,7 @@ git commit -m "feat: add speaker field and speaker-aware transcript rendering"
 - Consumes: nothing
 - Produces: `Settings.huggingface_token: str`, `Settings.diarization_enabled: bool`
 
-- [ ] **Step 1: Write the failing tests**
+- [X] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_config.py
@@ -201,12 +201,12 @@ class TestDiarizationSettings:
         assert settings.diarization_enabled is False
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [X] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_config.py -v`
 Expected: FAIL with `AttributeError: 'Settings' object has no attribute 'huggingface_token'`
 
-- [ ] **Step 3: Write the implementation**
+- [X] **Step 3: Write the implementation**
 
 In `core/config.py`, add to `_ENV_FIELDS`:
 

@@ -20,6 +20,7 @@ _ENV_FIELDS = {
     "ELEVENLABS_API_KEY": "elevenlabs_api_key",
     "ELEVENLABS_VOICE_ID": "elevenlabs_voice_id",
     "ELEVENLABS_MODEL": "elevenlabs_model",
+    "HUGGINGFACE_TOKEN": "huggingface_token",
 }
 
 
@@ -37,6 +38,10 @@ class Settings(BaseModel):
     elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # "Rachel", a default public voice
     elevenlabs_model: str = "eleven_multilingual_v2"
 
+    # Optional speaker diarization (F9). Off unless a Hugging Face token is set;
+    # pyannote also needs the optional extra: uv sync --extra diarization
+    huggingface_token: str = ""
+
     @field_validator("ollama_model", "whisper_model_size", "whisper_compute_type")
     @classmethod
     def _reject_blank(cls, value: str) -> str:
@@ -45,7 +50,7 @@ class Settings(BaseModel):
             raise ValueError("must not be blank")
         return value
 
-    @field_validator("elevenlabs_api_key", "elevenlabs_voice_id", "elevenlabs_model")
+    @field_validator("elevenlabs_api_key", "elevenlabs_voice_id", "elevenlabs_model", "huggingface_token")
     @classmethod
     def _strip(cls, value: str) -> str:
         return value.strip()
@@ -54,6 +59,11 @@ class Settings(BaseModel):
     def tts_enabled(self) -> bool:
         """Voice output is on only when an ElevenLabs API key is configured."""
         return bool(self.elevenlabs_api_key)
+
+    @property
+    def diarization_enabled(self) -> bool:
+        """Speaker diarization is on only when a Hugging Face token is configured."""
+        return bool(self.huggingface_token)
 
     @field_validator("ollama_base_url")
     @classmethod
