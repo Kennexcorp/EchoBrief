@@ -5,7 +5,14 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.schemas import ActionItem, Brief, InsightResult, Transcript, TranscriptSegment, render_segments
+from core.schemas import (
+    ActionItem,
+    Brief,
+    InsightResult,
+    Transcript,
+    TranscriptSegment,
+    render_segments,
+)
 
 
 def action_item_data(**overrides: Any) -> dict[str, Any]:
@@ -137,7 +144,7 @@ class TestRenderSegments:
     def test_unlabelled_segments_render_as_plain_joined_text(self) -> None:
         segments = [segment("Hello there.", 0.0, 2.0), segment("How are you?", 2.0, 4.0)]
         assert render_segments(segments) == "Hello there. How are you?"
-    
+
     def test_labels_each_speaker_turn(self) -> None:
         segments = [
             segment("How is the chapter?", 0.0, 2.0, "Speaker 1"),
@@ -162,10 +169,10 @@ class TestRenderSegments:
             segment("I'm fine", 3.0, 4.0, "Bob")
         ]
         assert render_segments(segments) == "Alice: How is the chapter?\nUnknown speaker: (inaudible)\nBob: I'm fine"
-    
+
     def test_empty_segment_list_renders_as_empty_string(self) -> None:
         assert render_segments([]) == ""
-    
+
 class TestTranscriptText:
     def test_delegates_to_render_segments(self) -> None:
         transcript = Transcript(

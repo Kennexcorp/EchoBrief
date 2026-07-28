@@ -81,7 +81,7 @@ class TestDiarizationSettings:
         settings = Settings.from_env({})
         assert settings.huggingface_token == ""
         assert settings.diarization_enabled == False
-    
+
     def test_token_from_env_enables_the_feature(self) -> None:
         settings = Settings.from_env({"HUGGINGFACE_TOKEN": "fake-token"})
         assert settings.huggingface_token == "fake-token"

@@ -235,12 +235,12 @@ Add `huggingface_token` to the existing `_strip` validator's field list, and add
         return bool(self.huggingface_token)
 ```
 
-- [ ] **Step 4: Run the tests**
+- [X] **Step 4: Run the tests**
 
 Run: `uv run pytest tests/test_config.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Request approval, then commit**
+- [X] **Step 5: Request approval, then commit**
 
 ```bash
 git add core/config.py tests/test_config.py
