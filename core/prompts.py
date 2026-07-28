@@ -31,6 +31,9 @@ Rules:
 deadlines, or feedback that were not discussed.
 - Every action item MUST include its supporting verbatim quote from the transcript.
 - If no action items were discussed, return an empty "action_items" array.
+- The transcript may label who is speaking (e.g. "Speaker 1:", "Speaker 2:"). \
+When it does, use those labels to set each action item's "owner" instead of \
+inferring ownership from phrasing.
 - Keep a neutral, factual tone."""
 
 _USER = """\

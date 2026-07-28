@@ -97,3 +97,16 @@ class TestRepairMessages:
         assert messages[-1].type == "human"
         assert "invalid JSON" in messages[-1].content
         assert "json" in messages[-1].content.lower()
+
+def test_system_prompt_instructs_the_model_to_use_speaker_labels() -> None:
+    messages = build_brief_messages("Speaker 1: Send it by Friday.")
+    system = str(messages[0].content)
+    assert "Speaker 1" in system
+    assert "owner" in system
+
+
+def test_chunk_and_synthesis_prompts_inherit_the_speaker_instruction() -> None:
+    chunk_system = str(build_chunk_brief_messages("text", 1, 2)[0].content)
+    synthesis_system = str(build_synthesis_messages(["notes"])[0].content)
+    assert "Speaker 1" in chunk_system
+    assert "Speaker 1" in synthesis_system
