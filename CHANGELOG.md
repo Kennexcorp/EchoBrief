@@ -3,7 +3,47 @@
 All notable changes to EchoBrief are documented here.
 This file is generated from [conventional commits](https://www.conventionalcommits.org) by [git-cliff](https://git-cliff.org).
 
+## [0.3.0] - 2026-07-28
+
+### Bug Fixes
+
+- Linting fixes
+- Keep speaker labels in the chunked map step
+- Decode audio in memory so diarization works on MP3
+
+### Chores
+
+- Refresh uv.lock for the 0.2.0 version bump
+- Bump version to 0.3.0
+
+### Documentation
+
+- Sync design doc with optional voice output (F8)
+- Add speaker diarization (F9) design spec
+- Move diarization spec to docs/specs/
+- Document diarization setup, trade-offs and F9
+
+### Features
+
+- Add speaker field and speaker-aware transcript rendering
+- Add HUGGINGFACE_TOKEN setting for diarization
+- Instruct the model to use speaker labels for action-item owners
+- Run diarization from the CLI and the Streamlit UI
+
+### Other
+
+- Assign speakers to transcript segments by timestamp overlap"
+- Add pyannote-backed diarization service with lazy import"
+- Add apply_diarization orchestrator with graceful degradation"
+
+### Testing
+
+- Stop CLI tests invoking the real diarization pipeline
 ## [0.2.0] - 2026-07-20
+
+### Chores
+
+- Bump version to 0.2.0 and update changelog
 
 ### Documentation
 
