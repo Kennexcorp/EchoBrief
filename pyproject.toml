@@ -1,6 +1,6 @@
 [project]
 name = "echobrief"
-version = "0.2.0"
+version = "0.3.0"
 description = "Turn recorded calls into summaries, insights, and tracked next steps — 100% locally."
 readme = "README.md"
 license = "MIT"
@@ -13,6 +13,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
     "streamlit>=1.59.2",
+    "watchdog>=6.0.0",
 ]
 
 [project.scripts]
