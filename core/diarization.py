@@ -5,12 +5,15 @@ outputs are joined here by timestamp overlap. The merge is a pure function,
 which keeps the interesting logic testable without audio, a GPU, or a token.
 """
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NamedTuple, Protocol
 
 from core.config import Settings
 from core.schemas import Transcript, TranscriptSegment
+
+logger = logging.getLogger(__name__)
 
 
 class SpeakerTurn(NamedTuple):
@@ -74,16 +77,39 @@ class DiarizationError(RuntimeError):
 
 
 class DiarizationModel(Protocol):
-    """The single capability this service needs: audio path in, result object out."""
+    """The single capability this service needs: audio in, result object out."""
 
-    def __call__(self, audio: str) -> Any: ...
+    def __call__(self, audio: dict[str, Any]) -> Any: ...
+
+
+def _decode_audio(path: Path) -> dict[str, Any]:
+    """Decode a whole audio file into the in-memory form pyannote accepts.
+
+    Handing pyannote a path makes it seek within the file for each analysis
+    window, and a seeked read of an MP3 returns fewer samples than requested
+    because the encoder-delay priming is lost. The pipeline asserts an exact
+    sample count, so every MP3 fails. Decoding once up front avoids all seeking.
+
+    torchcodec ships with pyannote.audio 4.x, so it is imported lazily here for
+    the same reason the pipeline is: this module must stay importable without
+    the optional extra.
+    """
+    from torchcodec.decoders import AudioDecoder
+
+    samples = AudioDecoder(str(path)).get_all_samples()
+    return {"waveform": samples.data, "sample_rate": samples.sample_rate}
 
 
 class DiarizationService:
     """Turns an audio file into speaker turns using an injected pyannote pipeline."""
 
-    def __init__(self, model: DiarizationModel) -> None:
+    def __init__(
+        self,
+        model: DiarizationModel,
+        loader: Callable[[Path], dict[str, Any]] = _decode_audio,
+    ) -> None:
         self._model = model
+        self._load = loader
 
     def diarize(self, audio_path: Path | str) -> list[SpeakerTurn]:
         path = Path(audio_path)
@@ -91,7 +117,7 @@ class DiarizationService:
             raise FileNotFoundError(f"Audio file not found: {path}")
 
         # community-1 returns a result object; the diarization is one field of it.
-        annotation = self._model(str(path)).speaker_diarization
+        annotation = self._model(self._load(path)).speaker_diarization
         return [
             SpeakerTurn(start=float(span.start), end=float(span.end), speaker=str(speaker))
             for span, _track, speaker in annotation.itertracks(yield_label=True)
@@ -148,6 +174,9 @@ def apply_diarization(
     except DiarizationError as exc:
         return transcript, str(exc)
     except Exception as exc:  # noqa: BLE001 - any pyannote failure must degrade, not crash
+        # The UI only has room for one line, so keep the traceback in the log:
+        # degrading gracefully must not mean destroying the evidence.
+        logger.exception("Diarization failed for %s", audio_path)
         return transcript, f"Speaker diarization failed, continuing without labels: {exc}"
 
     return Transcript(segments=assign_speakers(transcript.segments, turns)), None
