@@ -18,6 +18,7 @@ class TranscriptSegment(BaseModel):
     text: str
     start: float = Field(ge=0)
     end: float = Field(ge=0)
+    speaker: str | None = None
 
     @field_validator("text")
     @classmethod
@@ -32,6 +33,27 @@ class TranscriptSegment(BaseModel):
             raise ValueError("end must be >= start")
         return self
 
+def render_segments(segments: list[TranscriptSegment]) -> str:
+    """Join segments into text, prefixing each speaker turn when labels are present.
+
+    Consecutive segments from one speaker are merged into a single turn, so the
+    label appears once per turn rather than once per segment. With no labels at
+    all the output is the plain space-joined text, keeping behaviour identical
+    for transcripts that were never diarized.
+    """
+    if not any(segment.speaker for segment in segments):
+        return " ".join(segment.text for segment in segments)
+
+    turns: list[str] = []
+    current_speaker: str | None = None
+    for segment in segments:
+        speaker = segment.speaker or "Unknown speaker"
+        if speaker == current_speaker:
+            turns[-1] += f" {segment.text}"
+        else:
+            turns.append(f"{speaker}: {segment.text}")
+            current_speaker = speaker
+    return "\n".join(turns)
 
 class Transcript(BaseModel):
     """A full transcription: ordered segments plus the joined full text."""
@@ -40,7 +62,7 @@ class Transcript(BaseModel):
 
     @property
     def text(self) -> str:
-        return " ".join(segment.text for segment in self.segments)
+        return render_segments(self.segments)
 
 
 class ActionItem(BaseModel):

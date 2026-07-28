@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from core.schemas import ActionItem, Brief, InsightResult, Transcript, TranscriptSegment
+from core.schemas import ActionItem, Brief, InsightResult, Transcript, TranscriptSegment, render_segments
 
 
 def action_item_data(**overrides: Any) -> dict[str, Any]:
@@ -129,3 +129,52 @@ class TestBrief:
         brief = Brief.model_validate(brief_data(confidence=0.9))
 
         assert brief.summary.startswith("The supervisor")
+
+def segment(text: str, start: float, end: float, speaker: str | None = None) -> TranscriptSegment:
+    return TranscriptSegment(text=text, start=start, end=end, speaker=speaker)
+
+class TestRenderSegments:
+    def test_unlabelled_segments_render_as_plain_joined_text(self) -> None:
+        segments = [segment("Hello there.", 0.0, 2.0), segment("How are you?", 2.0, 4.0)]
+        assert render_segments(segments) == "Hello there. How are you?"
+    
+    def test_labels_each_speaker_turn(self) -> None:
+        segments = [
+            segment("How is the chapter?", 0.0, 2.0, "Speaker 1"),
+            segment("It's progressing well", 2.0, 4.0, "Speaker 1"),
+            segment("Good.", 4.0, 5.0, "Speaker 2")
+        ]
+        assert render_segments(segments) == "Speaker 1: How is the chapter? It's progressing well\nSpeaker 2: Good."
+
+    def test_groups_consecutive_segments_from_the_same_speaker(self) -> None:
+        segments = [
+            segment("Hello", 0.0, 1.0, "Speaker 1"),
+            segment("How are you?", 1.0, 2.0, "Speaker 1"),
+            segment("I'm fine", 2.0, 3.0, "Speaker 2"),
+            segment("Good.", 3.0, 4.0, "Speaker 1")
+        ]
+        assert render_segments(segments) == "Speaker 1: Hello How are you?\nSpeaker 2: I'm fine\nSpeaker 1: Good."
+
+    def test_unlabelled_segment_among_labelled_ones_is_marked_unknown(self) -> None:
+        segments = [
+            segment("How is the chapter?", 0.0, 2.0, "Alice"),
+            segment("(inaudible)", 2.0, 3.0),
+            segment("I'm fine", 3.0, 4.0, "Bob")
+        ]
+        assert render_segments(segments) == "Alice: How is the chapter?\nUnknown speaker: (inaudible)\nBob: I'm fine"
+    
+    def test_empty_segment_list_renders_as_empty_string(self) -> None:
+        assert render_segments([]) == ""
+    
+class TestTranscriptText:
+    def test_delegates_to_render_segments(self) -> None:
+        transcript = Transcript(
+            segments=[
+                segment("How is the chapter?", 0.0, 2.0, "Speaker 1"),
+                segment("I'm fine", 3.0, 4.0, "Speaker 2")
+            ]
+        )
+        assert transcript.text == "Speaker 1: How is the chapter?\nSpeaker 2: I'm fine"
+
+    def test_speaker_defaults_to_none(self) -> None:
+        assert segment("Hello.", 0.0, 1.0).speaker is None
