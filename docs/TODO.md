@@ -974,7 +974,7 @@ git commit -m "feat: run diarization from the CLI and the Streamlit UI"
 - Consumes: everything
 - Produces: the `diarization` optional extra
 
-- [ ] **Step 1: Add the optional extra**
+- [X] **Step 1: Add the optional extra**
 
 In `pyproject.toml`, after the `dependencies` list:
 
@@ -989,15 +989,31 @@ The floor is 4.0, not 3.1: `speaker-diarization-community-1` and the `output.spe
 
 Run: `uv sync --extra diarization` and confirm it resolves. Then run `uv sync` alone and confirm the default install still excludes torch.
 
-- [ ] **Step 2: Verify the real pyannote call by hand**
+- [X] **Step 2: Verify the real pyannote call by hand**
 
 This is the one thing no automated test covers, by deliberate choice in the spec. With a token set and the model terms accepted, run the CLI against `tests/fixtures/sample_call.mp3` and confirm the brief comes back with `Speaker N` labels in the transcript section. Record the result here:
 
 ```
-Manual verification (date, outcome):
+Manual verification (2026-07-28): PASS, after fixing an MP3 decoding bug found by this step.
+
+First run failed: "requested chunk [00:00:00.000 --> 00:00:10.000] resulted in 158895
+samples instead of the expected 160000". Cause: pyannote seeks within the file for
+each analysis window, and a seeked read of an MP3 loses the 1105-sample encoder-delay
+priming, so the chunk arrives short and the pipeline rejects it. This affected every
+MP3, the project's primary format. Fixed by decoding the file once into memory and
+passing pyannote {"waveform", "sample_rate"} instead of a path.
+
+After the fix: 3 turns, all SPEAKER_00, no warning, transcript renders "Speaker 1: ...".
+Single speaker is correct here, the bundled clip is a supervisor monologue.
+
+Multi-speaker verified (2026-07-28) against a second fixture,
+tests/fixtures/sample_two_speaker_call.mp3 (37s, two voices, generated locally with
+macOS `say` using Daniel and Samantha). All 10 turns attributed correctly, alternating
+Speaker 1 / Speaker 2 exactly as spoken. This is the first evidence that F9 does the
+thing it exists to do rather than merely running without error.
 ```
 
-- [ ] **Step 3: Update `.env.example`**
+- [X] **Step 3: Update `.env.example`**
 
 ```bash
 # --- Optional: speaker diarization via pyannote (labels who said what) ---
@@ -1007,21 +1023,21 @@ Manual verification (date, outcome):
 # HUGGINGFACE_TOKEN=
 ```
 
-- [ ] **Step 4: Update `docs/DESIGN.md`**
+- [X] **Step 4: Update `docs/DESIGN.md`**
 
 - Add to the functional requirements table: `| F9 | *(added post-MVP, 2026-07-28)* Transcript segments are labelled by speaker, and those labels are passed to the LLM so action-item ownership is grounded in the audio. Optional: needs the diarization extra and a Hugging Face token. |`
 - Add a trade-off matrix row for pyannote over WhisperX, carrying the reasoning from the spec, including why community-1 was chosen over 3.1 (one gated repo instead of two).
 - Add a risk matrix row: gated-model friction (likelihood high, impact low, mitigation: feature is optional and degrades to an unlabelled transcript with a message naming the exact fix).
 - Amend the privacy NFR to note that pyannote downloads weights from Hugging Face on first run and the token is transmitted there at download time, while inference is fully local. This is the same class of access Whisper weights already use.
 
-- [ ] **Step 5: Update `README.md` and `CLAUDE.md`**
+- [X] **Step 5: Update `README.md` and `CLAUDE.md`**
 
 - README roadmap: tick the diarization item and change "WhisperX" to "pyannote".
 - README project structure and CLAUDE.md layout: both list `docs/` as `DESIGN.md · model-eval.md`. Add `specs/` and `TODO.md`.
 - README: document `uv sync --extra diarization` and `HUGGINGFACE_TOKEN` in the configuration table, including the one-time terms acceptance at https://hf.co/pyannote/speaker-diarization-community-1.
 - README: add attribution for `pyannote/speaker-diarization-community-1`, which is CC-BY-4.0 and so carries an attribution requirement, unlike the MIT-licensed 3.1.
 
-- [ ] **Step 6: Run the full gate**
+- [X] **Step 6: Run the full gate**
 
 Run: `uv run ruff check . && uv run ruff format --check . && uv run pytest --cov=core --cov-fail-under=80`
 Expected: all pass, coverage on `core/` >= 80%

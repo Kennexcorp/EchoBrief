@@ -48,6 +48,8 @@ Then open <http://localhost:8501>. The image is multi-arch, so it runs natively 
 
 > On Linux, `host.docker.internal` isn't automatic — add `--add-host=host.docker.internal:host-gateway` to the `docker run`, or use the self-contained Compose stack (Path C).
 
+> The published image does not include speaker diarization: pyannote pulls in torch, which would add roughly 2 GB per architecture. Diarization needs a source install (Path B) with `uv sync --extra diarization`. Without it the container still produces a full brief, just without speaker labels.
+
 ### Path B — uv + Ollama (recommended for development)
 
 Run from source. Prereqs: [uv](https://docs.astral.sh/uv/getting-started/installation/), [ffmpeg](https://ffmpeg.org/download.html), [Ollama](https://ollama.com/download). No Python install needed — uv fetches the right version automatically.
@@ -111,6 +113,19 @@ Copy `.env.example` → `.env`:
 | `ELEVENLABS_API_KEY` | _(unset)_ | Set to enable opt-in voice output. Unset keeps EchoBrief fully local |
 | `ELEVENLABS_VOICE_ID` | `21m00Tcm4TlvDq8ikWAM` | Any ElevenLabs voice ID |
 | `ELEVENLABS_MODEL` | `eleven_multilingual_v2` | ElevenLabs TTS model |
+| `HUGGINGFACE_TOKEN` | _(unset)_ | Set to enable opt-in speaker diarization. Also needs `uv sync --extra diarization` |
+
+### Optional speaker diarization
+
+Diarization labels each transcript segment with who was speaking, so action-item ownership is grounded in the audio rather than guessed by the LLM. It is opt-in and needs two one-time steps:
+
+```bash
+uv sync --extra diarization    # installs pyannote.audio (pulls torch, ~2 GB)
+```
+
+Then create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens), accept the model terms at [hf.co/pyannote/speaker-diarization-community-1](https://hf.co/pyannote/speaker-diarization-community-1) (granted instantly), and set `HUGGINGFACE_TOKEN` in your `.env`.
+
+Weights download from Hugging Face on first run; inference is fully local, and no audio or transcript leaves your machine. Skip either step and EchoBrief still produces a brief, just without speaker labels, and tells you the exact fix.
 
 ### Optional voice output
 
@@ -183,7 +198,7 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 
 ## Roadmap
 
-- [ ] Speaker diarization — who said what (WhisperX)
+- [x] Speaker diarization: who said what (pyannote)
 - [ ] Call history dashboard with search across past briefs
 - [ ] Calendar / task-manager export (ICS, Todoist)
 - [ ] Multilingual transcription & translation
@@ -193,9 +208,9 @@ Full trade-off analysis, requirements, and risk matrix: [docs/DESIGN.md](docs/DE
 
 ```
 app/            Streamlit UI
-core/           transcription.py · insights.py · prompts.py · schemas.py
+core/           transcription.py · diarization.py · insights.py · prompts.py · schemas.py
 tests/          unit + integration (mocked LLM)
-docs/           DESIGN.md (full planning doc) · model-eval.md · demo.gif
+docs/           DESIGN.md (full planning doc) · model-eval.md · TODO.md · specs/ · demo.gif
 CONTRIBUTING.md, CHANGELOG.md, cliff.toml, pyproject.toml, uv.lock, Dockerfile, docker-compose.yml, .github/workflows/{ci,release}.yml
 ```
 
@@ -223,3 +238,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the wor
 EchoBrief is released under the MIT License — see [LICENSE](LICENSE). You're free to use, modify, and distribute it.
 
 The copyright holder retains all rights not granted by that license, including the right to offer the software under different or commercial terms. Future versions may be released under a different license; any change applies only going forward and never revokes the MIT grant on previously published releases.
+
+### Third-party model attribution
+
+The optional diarization feature uses [`pyannote/speaker-diarization-community-1`](https://hf.co/pyannote/speaker-diarization-community-1) by the pyannote team, licensed under [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/). The model is downloaded at runtime and is not redistributed with EchoBrief; if you enable diarization and distribute the output, that attribution requirement travels with it.
