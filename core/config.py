@@ -50,7 +50,9 @@ class Settings(BaseModel):
             raise ValueError("must not be blank")
         return value
 
-    @field_validator("elevenlabs_api_key", "elevenlabs_voice_id", "elevenlabs_model", "huggingface_token")
+    @field_validator(
+        "elevenlabs_api_key", "elevenlabs_voice_id", "elevenlabs_model", "huggingface_token"
+    )
     @classmethod
     def _strip(cls, value: str) -> str:
         return value.strip()

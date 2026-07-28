@@ -33,6 +33,7 @@ class TranscriptSegment(BaseModel):
             raise ValueError("end must be >= start")
         return self
 
+
 def render_segments(segments: list[TranscriptSegment]) -> str:
     """Join segments into text, prefixing each speaker turn when labels are present.
 
@@ -54,6 +55,7 @@ def render_segments(segments: list[TranscriptSegment]) -> str:
             turns.append(f"{speaker}: {segment.text}")
             current_speaker = speaker
     return "\n".join(turns)
+
 
 class Transcript(BaseModel):
     """A full transcription: ordered segments plus the joined full text."""

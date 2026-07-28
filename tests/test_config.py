@@ -76,11 +76,12 @@ class TestValidation:
 
         assert settings.ollama_base_url == "http://localhost:11434"
 
+
 class TestDiarizationSettings:
     def test_token_defaults_to_empty_and_feature_is_off(self) -> None:
         settings = Settings.from_env({})
         assert settings.huggingface_token == ""
-        assert settings.diarization_enabled == False
+        assert settings.diarization_enabled is False
 
     def test_token_from_env_enables_the_feature(self) -> None:
         settings = Settings.from_env({"HUGGINGFACE_TOKEN": "fake-token"})

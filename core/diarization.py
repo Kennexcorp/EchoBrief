@@ -5,8 +5,13 @@ outputs are joined here by timestamp overlap. The merge is a pure function,
 which keeps the interesting logic testable without audio, a GPU, or a token.
 """
 
+from pathlib import Path
+from typing import Any, NamedTuple, Protocol
+
+from core.config import Settings
 from core.schemas import TranscriptSegment
-from typing import NamedTuple
+
+
 class SpeakerTurn(NamedTuple):
     """One span of speech attributed to a speaker, in seconds from audio start."""
 
@@ -14,20 +19,29 @@ class SpeakerTurn(NamedTuple):
     end: float
     speaker: str
 
+
 def _overlap(segment: TranscriptSegment, turn: SpeakerTurn) -> float:
     """Return the duration of overlap between a segment and a turn in seconds"""
     return max(0.0, min(segment.end, turn.end) - max(segment.start, turn.start))
 
-def _friendly_labels(turns: list[SpeakerTurn]) -> dict[str,str]:
+
+def _friendly_labels(turns: list[SpeakerTurn]) -> dict[str, str]:
     """Map raw pynnote ids to Speaker 1, Speaker 2 etc."""
-    labels: dict[str,str] = {}
+    labels: dict[str, str] = {}
     for turn in sorted(turns, key=lambda item: item.start):
         if turn.speaker not in labels:
             labels[turn.speaker] = f"Speaker {len(labels) + 1}"
     return labels
 
-def assign_speakers(segments: list[TranscriptSegment], turns: list[SpeakerTurn]) -> list[TranscriptSegment]:
-    """For each segment, attach the speaker label of the turn it overlaps most. Segments with no overlap get speaker None."""
+
+def assign_speakers(
+    segments: list[TranscriptSegment], turns: list[SpeakerTurn]
+) -> list[TranscriptSegment]:
+    """Attach to each segment the label of the turn it overlaps most.
+
+    Ties go to the earlier-starting turn, and a segment overlapping no turn
+    keeps ``speaker=None``.
+    """
     if not turns:
         return list(segments)
 
@@ -40,7 +54,6 @@ def assign_speakers(segments: list[TranscriptSegment], turns: list[SpeakerTurn])
         best_overlap = 0.0
 
         for turn in ordered_turns:
-            
             overlap = _overlap(segment, turn)
             if overlap > best_overlap:
                 best_overlap = overlap
@@ -48,7 +61,69 @@ def assign_speakers(segments: list[TranscriptSegment], turns: list[SpeakerTurn])
 
         speaker = labels[best_turn.speaker] if best_turn is not None else None
         labelled.append(segment.model_copy(update={"speaker": speaker}))
-        
+
     return labelled
 
-    
+
+MODEL_ID = "pyannote/speaker-diarization-community-1"
+
+
+class DiarizationError(RuntimeError):
+    """Raised when diarization cannot run. Message states the exact fix."""
+
+
+class DiarizationModel(Protocol):
+    """The single capability this service needs: audio path in, result object out."""
+
+    def __call__(self, audio: str) -> Any: ...
+
+
+class DiarizationService:
+    """Turns an audio file into speaker turns using an injected pyannote pipeline."""
+
+    def __init__(self, model: DiarizationModel) -> None:
+        self._model = model
+
+    def diarize(self, audio_path: Path | str) -> list[SpeakerTurn]:
+        path = Path(audio_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"Audio file not found: {path}")
+
+        # community-1 returns a result object; the diarization is one field of it.
+        annotation = self._model(str(path)).speaker_diarization
+        return [
+            SpeakerTurn(start=float(span.start), end=float(span.end), speaker=str(speaker))
+            for span, _track, speaker in annotation.itertracks(yield_label=True)
+        ]
+
+
+def create_diarization_service(settings: Settings) -> DiarizationService:
+    """Build a service backed by a real pyannote pipeline; raises if unavailable.
+
+    pyannote is imported here rather than at module scope so this module stays
+    importable when the optional extra is not installed. That is what lets the
+    pipeline degrade to an unlabelled transcript instead of failing to start.
+    """
+    if not settings.diarization_enabled:
+        raise DiarizationError(
+            "Speaker diarization is off. Set HUGGINGFACE_TOKEN in your .env, and accept "
+            f"the model terms at https://hf.co/{MODEL_ID} to enable it."
+        )
+
+    try:
+        from pyannote.audio import Pipeline
+    except ImportError as exc:
+        raise DiarizationError(
+            "Speaker diarization needs the optional extra, which is not installed. "
+            "Install it with: uv sync --extra diarization"
+        ) from exc
+
+    try:
+        pipeline = Pipeline.from_pretrained(MODEL_ID, token=settings.huggingface_token)
+    except Exception as exc:
+        raise DiarizationError(
+            f"Could not load {MODEL_ID}: {exc}. Check that HUGGINGFACE_TOKEN is valid and "
+            f"that you have accepted the model terms at https://hf.co/{MODEL_ID}."
+        ) from exc
+
+    return DiarizationService(pipeline)

@@ -263,7 +263,7 @@ The heart of the feature. No I/O, no pyannote, no audio. If anything in this fea
 - Consumes: `TranscriptSegment` from Task 1
 - Produces: `SpeakerTurn(start: float, end: float, speaker: str)` NamedTuple, `assign_speakers(segments: list[TranscriptSegment], turns: list[SpeakerTurn]) -> list[TranscriptSegment]`
 
-- [ ] **Step 1: Write the failing tests**
+- [X] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_diarization.py
@@ -332,12 +332,12 @@ class TestAssignSpeakers:
         assert (result[0].start, result[0].end) == (1.0, 2.0)
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [X] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_diarization.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'core.diarization'`
 
-- [ ] **Step 3: Write the implementation**
+- [X] **Step 3: Write the implementation**
 
 ```python
 # core/diarization.py
@@ -409,12 +409,12 @@ def assign_speakers(
     return labelled
 ```
 
-- [ ] **Step 4: Run the tests**
+- [X] **Step 4: Run the tests**
 
 Run: `uv run pytest tests/test_diarization.py -v`
 Expected: PASS, 10 tests
 
-- [ ] **Step 5: Request approval, then commit**
+- [X] **Step 5: Request approval, then commit**
 
 ```bash
 git add core/diarization.py tests/test_diarization.py
@@ -440,7 +440,7 @@ git commit -m "feat: assign speakers to transcript segments by timestamp overlap
 - The auth argument is `token=`. The older `use_auth_token=` is deprecated in pyannote 3.x.
 - community-1's pipeline returns a **result object**, not an `Annotation`. The diarization lives at `output.speaker_diarization`, and you call `.itertracks(yield_label=True)` on that. This differs from 3.1, where the pipeline returns the `Annotation` directly, so examples written for 3.1 will mislead you here.
 
-- [ ] **Step 1: Write the failing tests**
+- [X] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_diarization.py (append)
@@ -523,12 +523,12 @@ class TestCreateDiarizationService:
         assert "pyannote/speaker-diarization-community-1" in message
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [X] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/test_diarization.py -v`
 Expected: FAIL with `ImportError: cannot import name 'DiarizationError'`
 
-- [ ] **Step 3: Write the implementation**
+- [X] **Step 3: Write the implementation**
 
 Append to `core/diarization.py`, and add `from pathlib import Path`, `from typing import Any, Protocol` plus `from core.config import Settings` to the imports:
 
@@ -597,7 +597,7 @@ def create_diarization_service(settings: Settings) -> DiarizationService:
     return DiarizationService(pipeline)
 ```
 
-- [ ] **Step 4: Run the tests**
+- [X] **Step 4: Run the tests**
 
 Run: `uv run pytest tests/test_diarization.py -v`
 Expected: PASS

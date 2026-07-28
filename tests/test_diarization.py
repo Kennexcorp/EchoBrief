@@ -1,7 +1,20 @@
 # tests/test_diarization.py
 """Tests for core.diarization."""
 
-from core.diarization import SpeakerTurn, assign_speakers
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
+
+from core.config import Settings
+from core.diarization import (
+    DiarizationError,
+    DiarizationService,
+    SpeakerTurn,
+    assign_speakers,
+    create_diarization_service,
+)
 from core.schemas import TranscriptSegment
 
 
@@ -62,3 +75,68 @@ class TestAssignSpeakers:
         result = assign_speakers(segments, [SpeakerTurn(0.0, 5.0, "SPEAKER_00")])
         assert result[0].text == "Send the chapter by Friday."
         assert (result[0].start, result[0].end) == (1.0, 2.0)
+
+
+class FakeAnnotation:
+    """Mimics pyannote.core.Annotation for testing"""
+
+    def __init__(self, tracks: list[tuple[float, float, str]]) -> None:
+        self.tracks = tracks
+
+    def itertracks(self, yield_label: bool = False) -> Any:
+        for start, end, speaker in self.tracks:
+            yield SimpleNamespace(start=start, end=end), "_", speaker
+
+
+class FakeOutput:
+    """Mimics the community-1 result objects: diarization is one field of it"""
+
+    def __init__(self, annotation: FakeAnnotation) -> None:
+        self.speaker_diarization = annotation
+
+
+class FakePipeline:
+    """Stands in for a loaded pyannote Pipeline: callable, returns a result object."""
+
+    def __init__(self, tracks: list[tuple[float, float, str]]) -> None:
+        self._tracks = tracks
+        self.calls: list[str] = []
+
+    def __call__(self, audio: str) -> FakeOutput:
+        self.calls.append(audio)
+        return FakeOutput(FakeAnnotation(self._tracks))
+
+
+@pytest.fixture
+def audio_file(tmp_path: Path) -> Path:
+    path = tmp_path / "call.mp3"
+    path.write_bytes(b"fake audio bytes")
+    return path
+
+
+class TestDiarizationService:
+    def test_maps_annotation_tracks_to_speaker_turns(self, audio_file: Path) -> None:
+        pipeline = FakePipeline([(0.0, 2.0, "SPEAKER_00"), (2.0, 4.0, "SPEAKER_01")])
+        turns = DiarizationService(pipeline).diarize(audio_file)
+        assert turns == [
+            SpeakerTurn(0.0, 2.0, "SPEAKER_00"),
+            SpeakerTurn(2.0, 4.0, "SPEAKER_01"),
+        ]
+
+    def test_passes_the_audio_path_to_the_pipeline(self, audio_file: Path) -> None:
+        pipeline = FakePipeline([])
+        DiarizationService(pipeline).diarize(audio_file)
+        assert pipeline.calls == [str(audio_file)]
+
+    def test_missing_audio_file_raises_file_not_found(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            DiarizationService(FakePipeline([])).diarize(tmp_path / "nope.mp3")
+
+
+class TestCreateDiarizationService:
+    def test_without_a_token_raises_with_the_env_var_and_model_url(self) -> None:
+        with pytest.raises(DiarizationError) as exc_info:
+            create_diarization_service(Settings())
+        message = str(exc_info.value)
+        assert "HUGGINGFACE_TOKEN" in message
+        assert "pyannote/speaker-diarization-community-1" in message
